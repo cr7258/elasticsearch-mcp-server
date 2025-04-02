@@ -49,3 +49,22 @@ class IndexTools(ElasticsearchClient):
             except Exception as e:
                 self.logger.error(f"Error getting settings: {e}")
                 return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+        @mcp.tool(description="Create new index with the same mapping as existing_index")
+        async def create_index(index: str, existing_index: str) -> list[TextContent]:
+            """
+            Create index with mapping of existing_index
+            """
+            self.logger.info(f"Creating index: {index} with mapping of {existing_index} existing index")
+            try:
+                mapping = self.es_client.indices.get_mapping(index=existing_index)[existing_index]["mappings"]
+                _settings = self.es_client.indices.get_settings(index=existing_index)[existing_index]["settings"]
+                settings = {
+                    "number_of_shards": _settings["index"]["number_of_shards"],
+                    "number_of_replicas": _settings["index"]["number_of_replicas"],
+                }
+                response = self.es_client.indices.create(index=index, mappings=mapping, settings=settings)
+                return [TextContent(type="text", text=str(response))]
+            except Exception as e:
+                self.logger.error(f"Error creating index: {e}")
+                return [TextContent(type="text", text=f"Error: {str(e)}")]
