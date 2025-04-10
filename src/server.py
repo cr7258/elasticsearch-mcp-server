@@ -13,8 +13,6 @@ from src.tools.register import ToolsRegister
 
 ENGINE_TYPE_DEFAULT = "elasticsearch"
 SUPPORTED_ENGINES = ("elasticsearch", "opensearch")
-
-
 class SearchMCPServer:
     def __init__(self, engine_type):
         # Set engine type
