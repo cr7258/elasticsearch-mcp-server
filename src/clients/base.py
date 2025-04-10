@@ -1,10 +1,9 @@
 import logging
 import warnings
-from abc import ABC
 from typing import Dict
 
 
-class SearchClientBase(ABC):
+class SearchClientBase:
     def __init__(self, config: Dict, engine_type: str):
         """
         Initialize the search client.
