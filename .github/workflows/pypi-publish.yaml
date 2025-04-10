@@ -1,10 +1,5 @@
-# This workflow will upload a Python Package using Twine when a release is created
-# For more information see: https://help.github.com/en/actions/language-and-framework-guides/using-python-with-github-actions#publishing-to-package-registries
-
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
+# This workflow will upload Python Packages using uv when a release is created
+# It builds and publishes two separate packages: elasticsearch-mcp-server and opensearch-mcp-server
 
 name: PyPI Publish
 
@@ -34,8 +29,23 @@ jobs:
         python -m pip install uv
         uv sync
 
-    - name: Build package
+    # First build and publish elasticsearch-mcp-server
+    - name: Build elasticsearch-mcp-server package
       run: uv build
-
-    - name: Publish package
+        
+    - name: Publish elasticsearch-mcp-server package
+      run: uv publish
+      
+    # Clean up dist directory
+    - name: Clean dist directory
+      run: rm -rf dist/*
+      
+    # Then build and publish opensearch-mcp-server
+    - name: Build opensearch-mcp-server package
+      run: |
+        # Change package name to opensearch-mcp-server
+        sed -i 's/^name = .*$/name = "opensearch-mcp-server"/' pyproject.toml
+        uv build
+        
+    - name: Publish opensearch-mcp-server package
       run: uv publish

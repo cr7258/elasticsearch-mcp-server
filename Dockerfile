@@ -19,9 +19,9 @@ RUN hatch build && pip install dist/*.whl
 
 # Set environment variables required for the MCP server
 # These can be overridden at runtime with docker run --env
-ENV ELASTIC_HOST="https://localhost:9200"
-ENV ELASTIC_USERNAME="elastic"
-ENV ELASTIC_PASSWORD="test123"
+ENV ELASTICSEARCH_HOST="https://localhost:9200"
+ENV ELASTICSEARCH_USERNAME="elastic"
+ENV ELASTICSEARCH_PASSWORD="test123"
 
 # Expose the port the server is running on (if applicable)
 EXPOSE 8000

@@ -1,22 +1,31 @@
 [project]
 name = "elasticsearch-mcp-server"
-version = "1.0.0"
-description = "MCP Server for interacting with Elasticsearch"
+version = "2.0.0"
+description = "MCP Server for interacting with Elasticsearch and OpenSearch"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "elasticsearch>=8.0.0",
+    "opensearch-py>=2.0.0",
     "mcp>=1.0.0",
     "python-dotenv>=1.0.0",
     "fastmcp>=0.4.0",
     "anthropic>=0.49.0",
+    "tomli>=2.2.1",
+    "tomli-w>=1.2.0",
 ]
 
 [project.license]
 file = "LICENSE"
 
 [project.scripts]
-elasticsearch-mcp-server = "elasticsearch_mcp_server:main"
+elasticsearch-mcp-server = "src.server:elasticsearch_mcp_server"
+opensearch-mcp-server = "src.server:opensearch_mcp_server"
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "src",
+]
 
 [build-system]
 requires = [

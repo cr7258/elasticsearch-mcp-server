@@ -1,10 +1,10 @@
-# Elasticsearch MCP Server
+# Elasticsearch/OpenSearch MCP Server
 
 [![smithery badge](https://smithery.ai/badge/elasticsearch-mcp-server)](https://smithery.ai/server/elasticsearch-mcp-server)
 
 ## Overview
 
-A Model Context Protocol (MCP) server implementation that provides Elasticsearch interaction. This server enables searching documents, analyzing indices, and managing cluster through a set of tools.
+A Model Context Protocol (MCP) server implementation that provides Elasticsearch and OpenSearch interaction. This server enables searching documents, analyzing indices, and managing cluster through a set of tools.
 
 <a href="https://glama.ai/mcp/servers/b3po3delex"><img width="380" height="200" src="https://glama.ai/mcp/servers/b3po3delex/badge" alt="Elasticsearch MCP Server" /></a>
 
@@ -16,31 +16,50 @@ https://github.com/user-attachments/assets/f7409e31-fac4-4321-9c94-b0ff2ea7ff15
 
 ### Index Operations
 
-- `list_indices`: List all indices in the Elasticsearch cluster.
-- `get_mapping`: Retrieve the mapping configuration for a specific index.
-- `get_settings`: Get the settings configuration for a specific index.
+- `list_indices`: List all indices.
+- `get_index`: Returns information (mappings, settings, aliases) about one or more indices.
+- `create_index`: Create a new index.
+- `delete_index`: Delete an index.
 
 ### Document Operations
 
-- `search_documents`: Search documents in an index using Elasticsearch Query DSL.
+- `search_documents`: Search for documents.
+- `index_document`: Creates or updates a document in the index.
+- `get_document`: Get a document by ID.
+- `delete_document`: Delete a document by ID.
+- `delete_by_query`: Deletes documents matching the provided query.
 
 ### Cluster Operations
 
-- `get_cluster_health`: Get health status of the cluster.
-- `get_cluster_stats`: Get statistical information about the cluster.
+- `get_cluster_health`: Returns basic information about the health of the cluster.
+- `get_cluster_stats`: Returns high-level overview of cluster statistics.
 
+### Alias Operations
 
-## Start Elasticsearch Cluster
+- `list_aliases`: List all aliases.
+- `get_alias`: Get alias information for a specific index.
+- `put_alias`: Create or update an alias for a specific index.
+- `delete_alias`: Delete an alias for a specific index.
 
-Start the Elasticsearch cluster using Docker Compose:
+## Configure Environment Variables
+
+Copy the `.env.example` file to `.env` and update the values accordingly.
+
+## Start Elasticsearch/OpenSearch Cluster
+
+Start the Elasticsearch/OpenSearch cluster using Docker Compose:
 
 ```bash
-docker-compose up -d
+# For Elasticsearch
+docker-compose -f docker-compose-elasticsearch.yml up -d
+
+# For OpenSearch
+docker-compose -f docker-compose-opensearch.yml up -d
 ```
 
-This will start a 3-node Elasticsearch cluster and Kibana. Default Elasticsearch username `elastic`, password `test123`.
+The default Elasticsearch username is `elastic` and password is `test123`. The default OpenSearch username is `admin` and password is `admin`.
 
-You can access Kibana from http://localhost:5601.
+You can access Kibana/OpenSearch Dashboards from http://localhost:5601.
 
 ## Usage with Claude Desktop
 
@@ -57,6 +76,7 @@ npx -y @smithery/cli install elasticsearch-mcp-server --client claude
 Using `uvx` will automatically install the package from PyPI, no need to clone the repository locally. Add the following configuration to Claude Desktop's config file `claude_desktop_config.json`.
 
 ```json
+// For Elasticsearch
 {
   "mcpServers": {
     "elasticsearch-mcp-server": {
@@ -65,9 +85,26 @@ Using `uvx` will automatically install the package from PyPI, no need to clone t
         "elasticsearch-mcp-server"
       ],
       "env": {
-        "ELASTIC_HOST": "https://localhost:9200",
-        "ELASTIC_USERNAME": "elastic",
-        "ELASTIC_PASSWORD": "test123"
+        "ELASTICSEARCH_HOSTS": "https://localhost:9200",
+        "ELASTICSEARCH_USERNAME": "elastic",
+        "ELASTICSEARCH_PASSWORD": "test123"
+      }
+    }
+  }
+}
+
+// For OpenSearch
+{
+  "mcpServers": {
+    "opensearch-mcp-server": {
+      "command": "uvx",
+      "args": [
+        "opensearch-mcp-server"
+      ],
+      "env": {
+        "OPENSEARCH_HOSTS": "https://localhost:9200",
+        "OPENSEARCH_USERNAME": "admin",
+        "OPENSEARCH_PASSWORD": "admin"
       }
     }
   }
@@ -79,9 +116,10 @@ Using `uvx` will automatically install the package from PyPI, no need to clone t
 Using `uv` requires cloning the repository locally and specifying the path to the source code. Add the following configuration to Claude Desktop's config file `claude_desktop_config.json`.
 
 ```json
+// For Elasticsearch
 {
   "mcpServers": {
-    "elasticsearch": {
+    "elasticsearch-mcp-server": {
       "command": "uv",
       "args": [
         "--directory",
@@ -90,9 +128,29 @@ Using `uv` requires cloning the repository locally and specifying the path to th
         "elasticsearch-mcp-server"
       ],
       "env": {
-        "ELASTIC_HOST": "https://localhost:9200",
-        "ELASTIC_USERNAME": "elastic",
-        "ELASTIC_PASSWORD": "test123"
+        "ELASTICSEARCH_HOSTS": "https://localhost:9200",
+        "ELASTICSEARCH_USERNAME": "elastic",
+        "ELASTICSEARCH_PASSWORD": "test123"
+      }
+    }
+  }
+}
+
+// For OpenSearch
+{
+  "mcpServers": {
+    "opensearch-mcp-server": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "path/to/src/elasticsearch_mcp_server",
+        "run",
+        "opensearch-mcp-server"
+      ],
+      "env": {
+        "OPENSEARCH_HOSTS": "https://localhost:9200",
+        "OPENSEARCH_USERNAME": "admin",
+        "OPENSEARCH_PASSWORD": "admin"
       }
     }
   }
@@ -104,19 +162,16 @@ Using `uv` requires cloning the repository locally and specifying the path to th
 
 Restart Claude Desktop to load the new MCP server.
 
-Now you can interact with your Elasticsearch cluster through Claude using natural language commands like:
+Now you can interact with your Elasticsearch/OpenSearch cluster through Claude using natural language commands like:
 - "List all indices in the cluster"
 - "How old is the student Bob?"
 - "Show me the cluster health status"
 
-## Usage with Anthropic ApiKey
+## Usage with Anthropic MCP Client
 
 ```python
-uv run src/elasticsearch_mcp_server/server.py
-
-uv run src/mcp_client/client.py src/elasticsearch_mcp_server/server.py
+uv run mcp_client/client.py src/server.py
 ```
-
 
 ## License
 

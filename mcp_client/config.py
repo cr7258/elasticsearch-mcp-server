@@ -3,10 +3,7 @@ import logging
 from os import getenv
 import pydantic_settings as py_set
 
-
-load_dotenv(".env")
-load_dotenv(".env.apikey")
-
+load_dotenv()
 
 class LoggerConfig(py_set.BaseSettings):
     file: str = "logs/notifications_telegram.log"

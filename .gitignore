@@ -1,7 +1,12 @@
+# IDE
 .idea
 .vscode
+
+# Python
 .venv
 dist
 __pycache__
 *.egg-info
-.env.apikey
+
+# Configuration and Credentials
+.env
