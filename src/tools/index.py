@@ -42,18 +42,9 @@ class IndexTools:
             Create index with mapping of existing_index
             """
             self.logger.info(f"Creating index: {index} with mapping of {existing_index} existing index")
-            try:
-                mapping = self.search_client.get_mapping(index=existing_index)
-                _settings = self.search_client.get_settings(index=existing_index)
-                settings = {
-                    "number_of_shards": _settings["index"]["number_of_shards"],
-                    "number_of_replicas": _settings["index"]["number_of_replicas"],
-                }
-                response = self.search_client.create_index(index=index, mappings=mapping, settings=settings)
-                return [TextContent(type="text", text=str(response))]
-            except Exception as e:
-                self.logger.error(f"Error creating index: {e}")
-                return [TextContent(type="text", text=f"Error: {str(e)}")]
+            mapping = self.search_client.get_mapping(index=existing_index)
+            settings = self.search_client.get_settings(index=existing_index)
+            return self.search_client.create_index(index=index, mappings=mapping, settings=settings)
 
         @mcp.tool()
         def delete_index(index: str) -> Dict:
