@@ -1,0 +1,22 @@
+line-length = 150
+
+[lint]
+select = [ "B",      # bugbear: security warnings
+
+    "E501",   # line-too-long
+    "E702",   # multiple-statements-on-one-line-semicolon
+    "E703",   # useless-semicolon
+    "E731",   # lambda-assignment
+
+    "F",      # pyflakes
+
+    "I",      # isort
+
+    "W291",   # trailing-whitespace
+    "W293",   # blank-line-with-whitespace
+
+    "UP039",  # unnecessary-class-parentheses
+]
+ignore = ["F401"]
+
+[lint.per-file-ignores]

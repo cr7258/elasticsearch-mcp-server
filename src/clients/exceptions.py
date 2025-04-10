@@ -1,40 +1,43 @@
 import functools
 import logging
-from typing import TypeVar, Callable
+from typing import Callable, TypeVar
 
 from fastmcp import FastMCP
 from mcp.types import TextContent
 
-T = TypeVar('T')
+T = TypeVar("T")
+
 
 def handle_search_exceptions(func: Callable[..., T]) -> Callable[..., list[TextContent]]:
     """
     Decorator to handle exceptions in search client operations.
-    
+
     Args:
         func: The function to decorate
-        
+
     Returns:
         Decorated function that handles exceptions
     """
+
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        logger = logging.getLogger()   
+        logger = logging.getLogger()
         try:
             return func(*args, **kwargs)
         except Exception as e:
             logger.error(f"Unexpected error in {func.__name__}: {e}")
             return [TextContent(type="text", text=f"Unexpected error in {func.__name__}: {str(e)}")]
-    
+
     return wrapper
+
 
 def with_exception_handling(tool_instance: object, mcp: FastMCP) -> None:
     """
     Register tools from a tool instance with automatic exception handling applied to all tools.
-    
+
     This function temporarily replaces mcp.tool with a wrapped version that automatically
     applies the handle_search_exceptions decorator to all registered tool methods.
-    
+
     Args:
         tool_instance: The tool instance that has a register_tools method
         mcp: The FastMCP instance used for tool registration
