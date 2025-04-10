@@ -1,4 +1,4 @@
-from typing import Dict, Optional, List
+from typing import Dict, List, Optional
 
 from fastmcp import FastMCP
 from mcp.types import TextContent
@@ -6,9 +6,10 @@ from mcp.types import TextContent
 
 class IndexTools:
     __slots__ = ("search_client", "logger")
+
     def __init__(self, search_client):
         self.search_client = search_client
-        
+
     def register_tools(self, mcp: FastMCP):
         @mcp.tool()
         def list_indices() -> List[Dict]:
@@ -19,7 +20,7 @@ class IndexTools:
         def get_index(index: str) -> Dict:
             """
             Returns information (mappings, settings, aliases) about one or more indices.
-            
+
             Args:
                 index: Name of the index
             """

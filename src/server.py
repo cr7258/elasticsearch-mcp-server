@@ -4,12 +4,12 @@ import sys
 from fastmcp import FastMCP
 
 from src.clients import create_search_client
+from src.exceptions import UnsupportedEngineException
 from src.tools.alias import AliasTools
 from src.tools.cluster import ClusterTools
 from src.tools.document import DocumentTools
 from src.tools.index import IndexTools
 from src.tools.register import ToolsRegister
-from src.exceptions import UnsupportedEngineException
 
 ENGINE_TYPE_DEFAULT = "elasticsearch"
 SUPPORTED_ENGINES = ("elasticsearch", "opensearch")
@@ -23,10 +23,10 @@ class SearchMCPServer:
         self.mcp = FastMCP(self.name)
         self.logger = logging.getLogger()
         self.logger.info(f"Initializing {self.name}...")
-        
+
         # Create the corresponding search client
         self.search_client = create_search_client(self.engine_type)
-        
+
         # Initialize tools
         self._register_tools()
 
@@ -34,20 +34,16 @@ class SearchMCPServer:
         """Register all MCP tools."""
         # Create a tools register
         register = ToolsRegister(self.logger, self.search_client, self.mcp)
-        
+
         # Define all tool classes to register
-        tool_classes = [
-            IndexTools,
-            DocumentTools,
-            ClusterTools,
-            AliasTools
-        ]        
+        tool_classes = [IndexTools, DocumentTools, ClusterTools, AliasTools]
         # Register all tools
         register.register_all_tools(tool_classes)
 
     def run(self):
         """Run the MCP server."""
         self.mcp.run()
+
 
 def run_search_server(engine_type: str):
     """Run search server with specified engine type."""
@@ -66,6 +62,5 @@ def main():
     run_search_server(engine_type)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
-

@@ -3,15 +3,13 @@ Client example copied from https://modelcontextprotocol.io/quickstart/client
 """
 
 import asyncio
-from typing import Optional
 from contextlib import AsyncExitStack
-
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+from typing import Optional
 
 from anthropic import Anthropic
-
 from config import get_logger, read_config
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
 
 logger = get_logger(__name__)
 
@@ -29,8 +27,8 @@ class MCPClient:
         Args:
             server_script_path: Path to the server script (.py or .js)
         """
-        is_python = server_script_path.endswith('.py')
-        is_js = server_script_path.endswith('.js')
+        is_python = server_script_path.endswith(".py")
+        is_js = server_script_path.endswith(".js")
         if not (is_python or is_js):
             raise ValueError("Server script must be a .py or .js file")
 
@@ -49,26 +47,14 @@ class MCPClient:
 
     async def process_query(self, query: str) -> str:
         """Process a query using Claude and available tools"""
-        messages = [
-            {
-                "role": "user",
-                "content": query
-            }
-        ]
+        messages = [{"role": "user", "content": query}]
 
         response = await self.session.list_tools()
-        available_tools = [{
-            "name": tool.name,
-            "description": tool.description,
-            "input_schema": tool.inputSchema
-        } for tool in response.tools]
+        available_tools = [{"name": tool.name, "description": tool.description, "input_schema": tool.inputSchema} for tool in response.tools]
 
         # Initial Claude API call
         response = self.anthropic.messages.create(
-            model=self.config.anthropic.model,
-            max_tokens=self.config.anthropic.max_tokens_message,
-            messages=messages,
-            tools=available_tools
+            model=self.config.anthropic.model, max_tokens=self.config.anthropic.max_tokens_message, messages=messages, tools=available_tools
         )
 
         # Process response and handle tool calls
@@ -76,10 +62,10 @@ class MCPClient:
 
         assistant_message_content = []
         for content in response.content:
-            if content.type == 'text':
+            if content.type == "text":
                 final_text.append(content.text)
                 assistant_message_content.append(content)
-            elif content.type == 'tool_use':
+            elif content.type == "tool_use":
                 tool_name = content.name
                 tool_args = content.input
 
@@ -88,27 +74,12 @@ class MCPClient:
                 final_text.append(f"[Calling tool {tool_name} with args {tool_args}]")
 
                 assistant_message_content.append(content)
-                messages.append({
-                    "role": "assistant",
-                    "content": assistant_message_content
-                })
-                messages.append({
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": content.id,
-                            "content": result.content
-                        }
-                    ]
-                })
+                messages.append({"role": "assistant", "content": assistant_message_content})
+                messages.append({"role": "user", "content": [{"type": "tool_result", "tool_use_id": content.id, "content": result.content}]})
 
                 # Get next response from Claude
                 response = self.anthropic.messages.create(
-                    model=self.config.anthropic.model,
-                    max_tokens=self.config.anthropic.max_tokens_message,
-                    messages=messages,
-                    tools=available_tools
+                    model=self.config.anthropic.model, max_tokens=self.config.anthropic.max_tokens_message, messages=messages, tools=available_tools
                 )
 
                 final_text.append(response.content[0].text)
@@ -124,7 +95,7 @@ class MCPClient:
             try:
                 query = input("\nQuery: ").strip()
 
-                if query.lower() == 'quit':
+                if query.lower() == "quit":
                     break
 
                 response = await self.process_query(query)
@@ -155,4 +126,5 @@ async def main():
 
 if __name__ == "__main__":
     import sys
+
     asyncio.run(main())
