@@ -5,7 +5,6 @@ from mcp.types import TextContent
 
 
 class IndexTools:
-    __slots__ = ("search_client", "logger")
 
     def __init__(self, search_client):
         self.search_client = search_client
