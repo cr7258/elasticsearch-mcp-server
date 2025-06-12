@@ -160,20 +160,20 @@ Using `uv` requires cloning the repository locally and specifying the path to th
 
 ```bash
 # By default, the SSE MCP server will serve on http://127.0.0.1:8000/sse
-uv run src/server.py elasticsearch --transport sse
+uv run src/server.py elasticsearch-mcp-server --transport sse
 
 # The host, port, and path can be specified using the --host, --port, and --path options
-uv run src/server.py elasticsearch --transport sse --host 0.0.0.0 --port 8000 --path /sse
+uv run src/server.py elasticsearch-mcp-server --transport sse --host 0.0.0.0 --port 8000 --path /sse
 ```
 
 ## Streamable HTTP
 
 ```bash
 # By default, the Streamable HTTP MCP server will serve on http://127.0.0.1:8000/mcp
-uv run src/server.py elasticsearch --transport streamable-http
+uv run src/server.py elasticsearch-mcp-server --transport streamable-http
 
 # The host, port, and path can be specified using the --host, --port, and --path options
-uv run src/server.py elasticsearch --transport streamable-http --host 0.0.0.0 --port 8000 --path /mcp
+uv run src/server.py elasticsearch-mcp-server --transport streamable-http --host 0.0.0.0 --port 8000 --path /mcp
 ```
 
 ## License

@@ -17,7 +17,7 @@ class SearchMCPServer:
     def __init__(self, engine_type):
         # Set engine type
         self.engine_type = engine_type
-        self.name = f"{self.engine_type}_mcp_server"
+        self.name = f"{self.engine_type}-mcp-server"
         self.mcp = FastMCP(self.name)
         self.logger = logging.getLogger()
         self.logger.info(f"Initializing {self.name}, Version: {VERSION}")
@@ -65,24 +65,13 @@ def run_search_server(engine_type, transport, host, port, path):
         server.logger.info(f"Starting {server.name} with {transport} transport")
         server.mcp.run(transport=transport)
 
-def elasticsearch_mcp_server():
-    """Entry point for Elasticsearch MCP server."""
-    run_search_server(engine_type="elasticsearch")
-
-def opensearch_mcp_server():
-    """Entry point for OpenSearch MCP server."""
-    run_search_server(engine_type="opensearch")
-
-if __name__ == "__main__":
-    # Parse command line arguments
-    parser = argparse.ArgumentParser(description=f"Elasticsearch/OpenSearch MCP Server v{VERSION}")
-    parser.add_argument(
-        "engine_type", 
-        nargs="?", 
-        default="elasticsearch",
-        choices=["elasticsearch", "opensearch"], 
-        help="Search engine type to use (default: elasticsearch)"
-    )
+def parse_server_args():
+    """Parse command line arguments for the MCP server.
+    
+    Returns:
+        Parsed arguments
+    """
+    parser = argparse.ArgumentParser()
     parser.add_argument(
         "--transport", "-t",
         default="stdio",
@@ -113,10 +102,55 @@ if __name__ == "__main__":
             args.path = "/sse"
         else:
             args.path = "/mcp"
+            
+    return args
+
+def elasticsearch_mcp_server():
+    """Entry point for Elasticsearch MCP server."""
+    args = parse_server_args()
     
     # Run the server with the specified options
     run_search_server(
-        engine_type=args.engine_type,
+        engine_type="elasticsearch",
+        transport=args.transport,
+        host=args.host,
+        port=args.port,
+        path=args.path
+    )
+
+def opensearch_mcp_server():
+    """Entry point for OpenSearch MCP server."""
+    args = parse_server_args()
+    
+    # Run the server with the specified options
+    run_search_server(
+        engine_type="opensearch",
+        transport=args.transport,
+        host=args.host,
+        port=args.port,
+        path=args.path
+    )
+
+if __name__ == "__main__":
+    # Require elasticsearch-mcp-server or opensearch-mcp-server as the first argument
+    if len(sys.argv) <= 1 or sys.argv[1] not in ["elasticsearch-mcp-server", "opensearch-mcp-server"]:
+        print("Error: First argument must be 'elasticsearch-mcp-server' or 'opensearch-mcp-server'")
+        sys.exit(1)
+        
+    # Determine engine type based on the first argument
+    engine_type = "elasticsearch"  # Default
+    if sys.argv[1] == "opensearch-mcp-server":
+        engine_type = "opensearch"
+        
+    # Remove the first argument so it doesn't interfere with argparse
+    sys.argv.pop(1)
+    
+    # Parse command line arguments
+    args = parse_server_args()
+    
+    # Run the server with the specified options
+    run_search_server(
+        engine_type=engine_type,
         transport=args.transport,
         host=args.host,
         port=args.port,
