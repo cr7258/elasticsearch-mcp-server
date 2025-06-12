@@ -1,5 +1,6 @@
 import logging
 import sys
+import argparse
 
 from fastmcp import FastMCP
 
@@ -43,14 +44,26 @@ class SearchMCPServer:
         # Register all tools
         register.register_all_tools(tool_classes)
 
-    def run(self):
-        """Run the MCP server."""
-        self.mcp.run()
 
-def run_search_server(engine_type):
-    """Run search server with specified engine type."""
+def run_search_server(engine_type, transport, host, port, path):
+    """Run search server with specified engine type and transport options.
+    
+    Args:
+        engine_type: Type of search engine to use ("elasticsearch" or "opensearch")
+        transport: Transport protocol to use ("stdio", "streamable-http", or "sse")
+        host: Host to bind to when using HTTP transports
+        port: Port to bind to when using HTTP transports
+        path: URL path prefix for HTTP transports
+    """
+    
     server = SearchMCPServer(engine_type=engine_type)
-    server.run()
+    
+    if transport in ["streamable-http", "sse"]:
+        server.logger.info(f"Starting {server.name} with {transport} transport on {host}:{port}{path}")
+        server.mcp.run(transport=transport, host=host, port=port, path=path)
+    else:
+        server.logger.info(f"Starting {server.name} with {transport} transport")
+        server.mcp.run(transport=transport)
 
 def elasticsearch_mcp_server():
     """Entry point for Elasticsearch MCP server."""
@@ -61,14 +74,51 @@ def opensearch_mcp_server():
     run_search_server(engine_type="opensearch")
 
 if __name__ == "__main__":
-    # Default to Elasticsearch
-    engine_type = "elasticsearch"
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description=f"Elasticsearch/OpenSearch MCP Server v{VERSION}")
+    parser.add_argument(
+        "engine_type", 
+        nargs="?", 
+        default="elasticsearch",
+        choices=["elasticsearch", "opensearch"], 
+        help="Search engine type to use (default: elasticsearch)"
+    )
+    parser.add_argument(
+        "--transport", "-t",
+        default="stdio",
+        choices=["stdio", "streamable-http", "sse"],
+        help="Transport protocol to use (default: stdio)"
+    )
+    parser.add_argument(
+        "--host", "-H",
+        default="127.0.0.1",
+        help="Host to bind to when using HTTP transports (default: 127.0.0.1)"
+    )
+    parser.add_argument(
+        "--port", "-p",
+        type=int,
+        default=8000,
+        help="Port to bind to when using HTTP transports (default: 8000)"
+    )
+    parser.add_argument(
+        "--path", "-P",
+        help="URL path prefix for HTTP transports (default: /mcp for streamable-http, /sse for sse)"
+    )
     
-    # If command line arguments are provided, use the first argument as the engine type
-    if len(sys.argv) > 1:
-        engine_type = sys.argv[1].lower()
+    args = parser.parse_args()
     
-    if engine_type == "opensearch":
-        opensearch_mcp_server()
-    else:
-        elasticsearch_mcp_server()
+    # Set default path based on transport type if not specified
+    if args.path is None:
+        if args.transport == "sse":
+            args.path = "/sse"
+        else:
+            args.path = "/mcp"
+    
+    # Run the server with the specified options
+    run_search_server(
+        engine_type=args.engine_type,
+        transport=args.transport,
+        host=args.host,
+        port=args.port,
+        path=args.path
+    )
