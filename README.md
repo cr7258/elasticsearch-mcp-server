@@ -68,19 +68,11 @@ The default Elasticsearch username is `elastic` and password is `test123`. The d
 
 You can access Kibana/OpenSearch Dashboards from http://localhost:5601.
 
-## Usage with Claude Desktop
+## Stdio
 
-### Option 1: Installing via Smithery
+### Option 1: Using uvx
 
-To install Elasticsearch Server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/elasticsearch-mcp-server):
-
-```bash
-npx -y @smithery/cli install elasticsearch-mcp-server --client claude
-```
-
-### Option 2: Using uvx
-
-Using `uvx` will automatically install the package from PyPI, no need to clone the repository locally. Add the following configuration to Claude Desktop's config file `claude_desktop_config.json`.
+Using `uvx` will automatically install the package from PyPI, no need to clone the repository locally. Add the following configuration to 's config file `claude_desktop_config.json`.
 
 ```json
 // For Elasticsearch
@@ -118,7 +110,7 @@ Using `uvx` will automatically install the package from PyPI, no need to clone t
 }
 ```
 
-### Option 3: Using uv with local development
+### Option 2: Using uv with local development
 
 Using `uv` requires cloning the repository locally and specifying the path to the source code. Add the following configuration to Claude Desktop's config file `claude_desktop_config.json`.
 
@@ -164,20 +156,24 @@ Using `uv` requires cloning the repository locally and specifying the path to th
 }
 ```
 
-- On macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
+## SSE
 
-Restart Claude Desktop to load the new MCP server.
+```bash
+# By default, the SSE MCP server will serve on http://127.0.0.1:8000/sse
+uv run src/server.py elasticsearch --transport sse
 
-Now you can interact with your Elasticsearch/OpenSearch cluster through Claude using natural language commands like:
-- "List all indices in the cluster"
-- "How old is the student Bob?"
-- "Show me the cluster health status"
+# The host, port, and path can be specified using the --host, --port, and --path options
+uv run src/server.py elasticsearch --transport sse --host 0.0.0.0 --port 8000 --path /sse
+```
 
-## Usage with Anthropic MCP Client
+## Streamable HTTP
 
-```python
-uv run mcp_client/client.py src/server.py
+```bash
+# By default, the Streamable HTTP MCP server will serve on http://127.0.0.1:8000/mcp
+uv run src/server.py elasticsearch --transport streamable-http
+
+# The host, port, and path can be specified using the --host, --port, and --path options
+uv run src/server.py elasticsearch --transport streamable-http --host 0.0.0.0 --port 8000 --path /mcp
 ```
 
 ## License
