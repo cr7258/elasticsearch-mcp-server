@@ -158,6 +158,23 @@ Using `uv` requires cloning the repository locally and specifying the path to th
 
 ## SSE
 
+### Option 1: Using uvx
+
+```bash
+# export environment variables
+export ELASTICSEARCH_HOSTS="https://localhost:9200"
+export ELASTICSEARCH_USERNAME="elastic"
+export ELASTICSEARCH_PASSWORD="test123"
+
+# By default, the SSE MCP server will serve on http://127.0.0.1:8000/sse
+uvx elasticsearch-mcp-server --transport sse
+
+# The host, port, and path can be specified using the --host, --port, and --path options
+uvx elasticsearch-mcp-server --transport sse --host 0.0.0.0 --port 8000 --path /sse
+```
+
+### Option 2: Using uv
+
 ```bash
 # By default, the SSE MCP server will serve on http://127.0.0.1:8000/sse
 uv run src/server.py elasticsearch-mcp-server --transport sse
@@ -167,6 +184,23 @@ uv run src/server.py elasticsearch-mcp-server --transport sse --host 0.0.0.0 --p
 ```
 
 ## Streamable HTTP
+
+### Option 1: Using uvx
+
+```bash
+# export environment variables
+export ELASTICSEARCH_HOSTS="https://localhost:9200"
+export ELASTICSEARCH_USERNAME="elastic"
+export ELASTICSEARCH_PASSWORD="test123"
+
+# By default, the Streamable HTTP MCP server will serve on http://127.0.0.1:8000/mcp
+uvx elasticsearch-mcp-server --transport streamable-http
+
+# The host, port, and path can be specified using the --host, --port, and --path options
+uvx elasticsearch-mcp-server --transport streamable-http --host 0.0.0.0 --port 8000 --path /mcp
+```
+
+### Option 2: Using uv
 
 ```bash
 # By default, the Streamable HTTP MCP server will serve on http://127.0.0.1:8000/mcp
