@@ -1,7 +1,7 @@
 from abc import ABC
 import logging
 import warnings
-from typing import Dict
+from typing import Dict, Optional
 
 from elasticsearch import Elasticsearch
 import httpx
@@ -39,10 +39,13 @@ class SearchClientBase(ABC):
         
         # Initialize client based on engine type
         if engine_type == "elasticsearch":
+            # Get auth parameters based on elasticsearch package version
+            auth_params = self._get_elasticsearch_auth_params(username, password)
+            
             self.client = Elasticsearch(
                 hosts=hosts,
-                basic_auth=(username, password) if username and password else None,
-                verify_certs=verify_certs
+                verify_certs=verify_certs,
+                **auth_params
             )
             self.logger.info(f"Elasticsearch client initialized with hosts: {hosts}")
         elif engine_type == "opensearch":
@@ -64,9 +67,38 @@ class SearchClientBase(ABC):
             verify_certs=verify_certs,
         )
 
+    def _get_elasticsearch_auth_params(self, username: Optional[str], password: Optional[str]) -> Dict:
+        """
+        Get authentication parameters for Elasticsearch client based on package version.
+        
+        Args:
+            username: Username for authentication
+            password: Password for authentication
+            
+        Returns:
+            Dictionary with appropriate auth parameters for the ES version
+        """
+        if not username or not password:
+            return {}
+            
+        # Check Elasticsearch package version to determine auth parameter name
+        try:
+            from elasticsearch import __version__ as es_version
+            major_version = int(es_version.split('.')[0])
+            
+            if major_version >= 8:
+                # ES 8+ uses basic_auth
+                return {"basic_auth": (username, password)}
+            else:
+                # ES 7 and below use http_auth
+                return {"http_auth": (username, password)}
+        except (ImportError, ValueError, AttributeError):
+            # If we can't detect version, try basic_auth first (ES 8+ default)
+            return {"basic_auth": (username, password)}
+
 class GeneralRestClient:
-    def __init__(self, base_url: str, username: str, password: str, verify_certs: bool):
-        self.base_url = base_url.rstrip("/")
+    def __init__(self, base_url: Optional[str], username: Optional[str], password: Optional[str], verify_certs: bool):
+        self.base_url = base_url.rstrip("/") if base_url else ""
         self.auth = (username, password) if username and password else None
         self.verify_certs = verify_certs
 
