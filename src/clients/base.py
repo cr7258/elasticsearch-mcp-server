@@ -84,15 +84,15 @@ class SearchClientBase(ABC):
         # Check Elasticsearch package version to determine auth parameter name
         try:
             from elasticsearch import __version__ as es_version
-            major_version = int(es_version.split('.')[0])
-            
+            major_version = es_version[0]    
             if major_version >= 8:
                 # ES 8+ uses basic_auth
                 return {"basic_auth": (username, password)}
             else:
                 # ES 7 and below use http_auth
                 return {"http_auth": (username, password)}
-        except (ImportError, ValueError, AttributeError):
+        except Exception as e:
+            self.logger.error(f"Failed to detect Elasticsearch version: {e}")
             # If we can't detect version, try basic_auth first (ES 8+ default)
             return {"basic_auth": (username, password)}
 

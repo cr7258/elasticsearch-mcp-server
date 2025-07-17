@@ -210,6 +210,21 @@ uv run src/server.py elasticsearch-mcp-server --transport streamable-http
 uv run src/server.py elasticsearch-mcp-server --transport streamable-http --host 0.0.0.0 --port 8000 --path /mcp
 ```
 
+## Compatibility
+
+The MCP server is compatible with Elasticsearch 7.x, 8.x, and 9.x. By default, it uses the Elasticsearch 8.x client (without a suffix). To use the Elasticsearch 7.x client, run the `elasticsearch-mcp-server-es7` variant. For Elasticsearch 9.x, use `elasticsearch-mcp-server-es9`. For example:
+
+```bash
+uvx elasticsearch-mcp-server-es7
+```
+
+| MCP Server | Elasticsearch |
+| --- | --- |
+| elasticsearch-mcp-server-es7 | Elasticsearch 7.x |
+| elasticsearch-mcp-server | Elasticsearch 8.x |
+| elasticsearch-mcp-server-es9 | Elasticsearch 9.x |
+| opensearch-mcp-server | OpenSearch 1.x, 2.x, 3.x |
+
 ## License
 
 This project is licensed under the Apache License Version 2.0 - see the [LICENSE](LICENSE) file for details.
