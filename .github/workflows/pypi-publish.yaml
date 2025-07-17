@@ -47,6 +47,11 @@ jobs:
 
         # Update elasticsearch version
         sed -i 's/elasticsearch==.*/elasticsearch==${{ matrix.variant.elasticsearch_version }}",/' pyproject.toml
+        
+        # Update script name to match package name (only for non-opensearch packages)
+        if [[ "${{ matrix.variant.name }}" != "opensearch-mcp-server" ]]; then
+          sed -i 's/^elasticsearch-mcp-server = /"${{ matrix.variant.name }}" = /' pyproject.toml
+        fi
 
     - name: Build ${{ matrix.variant.name }} package
       run: uv build
