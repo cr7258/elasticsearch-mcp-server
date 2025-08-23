@@ -24,12 +24,14 @@ def create_search_client(engine_type: str) -> SearchClient:
     hosts = [host.strip() for host in hosts_str.split(",")]
     username = os.environ.get(f"{prefix}_USERNAME")
     password = os.environ.get(f"{prefix}_PASSWORD")
+    api_key = os.environ.get(f"{prefix}_API_KEY")
     verify_certs = os.environ.get(f"{prefix}_VERIFY_CERTS", "false").lower() == "true"
     
     config = {
         "hosts": hosts,
         "username": username,
         "password": password,
+        "api_key": api_key,
         "verify_certs": verify_certs
     }
     
