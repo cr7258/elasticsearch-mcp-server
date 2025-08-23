@@ -74,3 +74,11 @@ git checkout <branch-name>
 git fetch upstream
 git rebase upstream/main
 ```
+
+## Release
+
+```bash
+uv sync
+source .venv/bin/activate
+make release version=<RELEASE_VERSION>
+```
