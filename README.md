@@ -50,7 +50,20 @@ https://github.com/user-attachments/assets/f7409e31-fac4-4321-9c94-b0ff2ea7ff15
 
 ## Configure Environment Variables
 
-Copy the `.env.example` file to `.env` and update the values accordingly.
+The MCP server supports the following environment variables for authentication:
+
+### Basic Authentication (Username/Password)
+- `ELASTICSEARCH_USERNAME`: Username for basic authentication
+- `ELASTICSEARCH_PASSWORD`: Password for basic authentication
+- `OPENSEARCH_USERNAME`: Username for OpenSearch basic authentication
+- `OPENSEARCH_PASSWORD`: Password for OpenSearch basic authentication
+
+### API Key Authentication (Elasticsearch only) - Recommended
+- `ELASTICSEARCH_API_KEY`: API key for [Elasticsearch](https://www.elastic.co/docs/deploy-manage/api-keys/elasticsearch-api-keys) or [Elastic Cloud](https://www.elastic.co/docs/deploy-manage/api-keys/elastic-cloud-api-keys) Authentication.
+
+### Other Configuration
+- `ELASTICSEARCH_HOSTS` / `OPENSEARCH_HOSTS`: Comma-separated list of hosts (default: `https://localhost:9200`)
+- `ELASTICSEARCH_VERIFY_CERTS` / `OPENSEARCH_VERIFY_CERTS`: Whether to verify SSL certificates (default: `false`)
 
 ## Start Elasticsearch/OpenSearch Cluster
 
@@ -75,7 +88,7 @@ You can access Kibana/OpenSearch Dashboards from http://localhost:5601.
 Using `uvx` will automatically install the package from PyPI, no need to clone the repository locally. Add the following configuration to 's config file `claude_desktop_config.json`.
 
 ```json
-// For Elasticsearch
+// For Elasticsearch with username/password
 {
   "mcpServers": {
     "elasticsearch-mcp-server": {
@@ -87,6 +100,22 @@ Using `uvx` will automatically install the package from PyPI, no need to clone t
         "ELASTICSEARCH_HOSTS": "https://localhost:9200",
         "ELASTICSEARCH_USERNAME": "elastic",
         "ELASTICSEARCH_PASSWORD": "test123"
+      }
+    }
+  }
+}
+
+// For Elasticsearch with API key
+{
+  "mcpServers": {
+    "elasticsearch-mcp-server": {
+      "command": "uvx",
+      "args": [
+        "elasticsearch-mcp-server"
+      ],
+      "env": {
+        "ELASTICSEARCH_HOSTS": "https://localhost:9200",
+        "ELASTICSEARCH_API_KEY": "<YOUR_ELASTICSEARCH_API_KEY>"
       }
     }
   }
@@ -115,7 +144,7 @@ Using `uvx` will automatically install the package from PyPI, no need to clone t
 Using `uv` requires cloning the repository locally and specifying the path to the source code. Add the following configuration to Claude Desktop's config file `claude_desktop_config.json`.
 
 ```json
-// For Elasticsearch
+// For Elasticsearch with username/password
 {
   "mcpServers": {
     "elasticsearch-mcp-server": {
@@ -130,6 +159,25 @@ Using `uv` requires cloning the repository locally and specifying the path to th
         "ELASTICSEARCH_HOSTS": "https://localhost:9200",
         "ELASTICSEARCH_USERNAME": "elastic",
         "ELASTICSEARCH_PASSWORD": "test123"
+      }
+    }
+  }
+}
+
+// For Elasticsearch with API key
+{
+  "mcpServers": {
+    "elasticsearch-mcp-server": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "path/to/src/elasticsearch_mcp_server",
+        "run",
+        "elasticsearch-mcp-server"
+      ],
+      "env": {
+        "ELASTICSEARCH_HOSTS": "https://localhost:9200",
+        "ELASTICSEARCH_API_KEY": "<YOUR_ELASTICSEARCH_API_KEY>"
       }
     }
   }
@@ -161,10 +209,14 @@ Using `uv` requires cloning the repository locally and specifying the path to th
 ### Option 1: Using uvx
 
 ```bash
-# export environment variables
+# export environment variables (with username/password)
 export ELASTICSEARCH_HOSTS="https://localhost:9200"
 export ELASTICSEARCH_USERNAME="elastic"
 export ELASTICSEARCH_PASSWORD="test123"
+
+# OR export environment variables (with API key)
+export ELASTICSEARCH_HOSTS="https://localhost:9200"
+export ELASTICSEARCH_API_KEY="<YOUR_ELASTICSEARCH_API_KEY>"
 
 # By default, the SSE MCP server will serve on http://127.0.0.1:8000/sse
 uvx elasticsearch-mcp-server --transport sse
@@ -188,10 +240,14 @@ uv run src/server.py elasticsearch-mcp-server --transport sse --host 0.0.0.0 --p
 ### Option 1: Using uvx
 
 ```bash
-# export environment variables
+# export environment variables (with username/password)
 export ELASTICSEARCH_HOSTS="https://localhost:9200"
 export ELASTICSEARCH_USERNAME="elastic"
 export ELASTICSEARCH_PASSWORD="test123"
+
+# OR export environment variables (with API key)
+export ELASTICSEARCH_HOSTS="https://localhost:9200"
+export ELASTICSEARCH_API_KEY="<YOUR_ELASTICSEARCH_API_KEY>"
 
 # By default, the Streamable HTTP MCP server will serve on http://127.0.0.1:8000/mcp
 uvx elasticsearch-mcp-server --transport streamable-http
