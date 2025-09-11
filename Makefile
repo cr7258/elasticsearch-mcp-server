@@ -11,6 +11,11 @@ release:
 		data["project"]["version"] = "$(version:v%=%)"; \
 		tomli_w.dump(data, open("pyproject.toml", "wb"))'
 	@python -c 'open("src/version.py", "w").write("__version__ = \"$(version:v%=%)\"\n")'
+	@python -c 'import json; \
+		data = json.load(open("server.json", "r")); \
+		data["version"] = "$(version:v%=%)"; \
+		data["packages"][0]["version"] = "$(version:v%=%)"; \
+		json.dump(data, open("server.json", "w"), indent=2)'
 	@uv sync
 	@git add .
 	@git commit -m "release: update version to $(version:v%=%)"
