@@ -1,4 +1,6 @@
 
+<!-- mcp-name: io.github.cr7258/elasticsearch-mcp-server -->
+
 # Elasticsearch/OpenSearch MCP Server
 
 [![MseeP.ai Security Assessment Badge](https://mseep.net/pr/cr7258-elasticsearch-mcp-server-badge.png)](https://mseep.ai/app/cr7258-elasticsearch-mcp-server)

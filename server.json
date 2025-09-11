@@ -1,0 +1,61 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "name": "io.github.cr7258/elasticsearch-mcp-server",
+  "description": "MCP server for interacting with Elasticsearch",
+  "status": "active",
+  "repository": {
+    "url": "https://github.com/cr7258/elasticsearch-mcp-server",
+    "source": "github"
+  },
+  "version": "2.0.11",
+  "packages": [
+    {
+      "registry_type": "pypi",
+      "registry_base_url": "https://pypi.org",
+      "identifier": "elasticsearch-mcp-server",
+      "version": "2.0.11",
+      "transport": {
+        "type": "stdio"
+      },
+      "environment_variables": [
+        {
+          "name": "ELASTICSEARCH_HOSTS",
+          "description": "Comma-separated list of Elasticsearch hosts (e.g., https://localhost:9200)",
+          "is_required": false,
+          "format": "string",
+          "is_secret": false,
+          "default": "https://localhost:9200"
+        },
+        {
+          "name": "ELASTICSEARCH_API_KEY",
+          "description": "API key for Elasticsearch or Elastic Cloud authentication (recommended)",
+          "is_required": false,
+          "format": "string",
+          "is_secret": true
+        },
+        {
+          "name": "ELASTICSEARCH_USERNAME",
+          "description": "Username for basic authentication (alternative to API key)",
+          "is_required": false,
+          "format": "string",
+          "is_secret": false
+        },
+        {
+          "name": "ELASTICSEARCH_PASSWORD",
+          "description": "Password for basic authentication (used with ELASTICSEARCH_USERNAME)",
+          "is_required": false,
+          "format": "string",
+          "is_secret": true
+        },
+        {
+          "name": "ELASTICSEARCH_VERIFY_CERTS",
+          "description": "Whether to verify SSL certificates (true/false)",
+          "is_required": false,
+          "format": "boolean",
+          "is_secret": false,
+          "default": "false"
+        }
+      ]
+    }
+  ]
+}
