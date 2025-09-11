@@ -80,5 +80,6 @@ git rebase upstream/main
 ```bash
 uv sync
 source .venv/bin/activate
+# example: make release version=v0.0.6
 make release version=<RELEASE_VERSION>
 ```

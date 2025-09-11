@@ -7,6 +7,8 @@
 
 [![Trust Score](https://archestra.ai/mcp-catalog/api/badge/quality/cr7258/elasticsearch-mcp-server)](https://archestra.ai/mcp-catalog/cr7258__elasticsearch-mcp-server)
 
+[MCP Official Registry]( https://registry.modelcontextprotocol.io/v0/servers?search=io.github.cr7258/elasticsearch-mcp-server)
+
 ## Overview
 
 A Model Context Protocol (MCP) server implementation that provides Elasticsearch and OpenSearch interaction. This server enables searching documents, analyzing indices, and managing cluster through a set of tools.

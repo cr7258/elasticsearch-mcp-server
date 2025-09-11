@@ -1,0 +1,32 @@
+name: Publish Python MCP Server
+
+on:
+  workflow_run:
+    workflows: ["PyPI Publish"]
+    types:
+      - completed
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update server.json version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          jq --arg version "$VERSION" '.version = $version' server.json > tmp.json
+          mv tmp.json server.json
+      - name: Install MCP Publisher
+        run: |
+          git clone https://github.com/modelcontextprotocol/registry publisher-repo
+          cd publisher-repo && make publisher && cd ..
+          cp publisher-repo/cmd/publisher/bin/mcp-publisher mcp-publisher
+      
+      - name: Publish to MCP Registry
+        run: |
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish
