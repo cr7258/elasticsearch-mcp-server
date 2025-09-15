@@ -20,7 +20,13 @@ class SearchMCPServer:
         self.engine_type = engine_type
         self.name = f"{self.engine_type}-mcp-server"
         self.mcp = FastMCP(self.name)
-        self.logger = logging.getLogger()
+        
+        # Configure logging
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        )
+        self.logger = logging.getLogger(__name__)
         self.logger.info(f"Initializing {self.name}, Version: {VERSION}")
         
         # Create the corresponding search client
