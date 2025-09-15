@@ -7,6 +7,7 @@ from fastmcp import FastMCP
 from src.clients import create_search_client
 from src.tools.alias import AliasTools
 from src.tools.cluster import ClusterTools
+from src.tools.data_stream import DataStreamTools
 from src.tools.document import DocumentTools
 from src.tools.general import GeneralTools
 from src.tools.index import IndexTools
@@ -39,6 +40,7 @@ class SearchMCPServer:
             DocumentTools,
             ClusterTools,
             AliasTools,
+            DataStreamTools,
             GeneralTools,
         ]        
         # Register all tools
