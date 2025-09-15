@@ -1,12 +1,7 @@
-"""Data stream client implementation for both Elasticsearch and OpenSearch."""
-
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 from src.clients.base import SearchClientBase
 
-
-class DataStreamClient(SearchClientBase):
-    """Client for data stream operations compatible with both Elasticsearch and OpenSearch."""
-    
+class DataStreamClient(SearchClientBase):  
     def create_data_stream(self, name: str) -> Dict:
         """Create a new data stream."""
         return self.client.indices.create_data_stream(name=name)

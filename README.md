@@ -31,6 +31,9 @@ https://github.com/user-attachments/assets/f7409e31-fac4-4321-9c94-b0ff2ea7ff15
 - `get_index`: Returns information (mappings, settings, aliases) about one or more indices.
 - `create_index`: Create a new index.
 - `delete_index`: Delete an index.
+- `create_data_stream`: Create a new data stream (requires matching index template).
+- `get_data_stream`: Get information about one or more data streams.
+- `delete_data_stream`: Delete one or more data streams and their backing indices.
 
 ### Document Operations
 

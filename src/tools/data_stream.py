@@ -1,12 +1,7 @@
-"""Data stream tools for MCP server."""
-
 from typing import Dict, Optional
 from fastmcp import FastMCP
 
-
-class DataStreamTools:
-    """Tools for managing data streams in Elasticsearch/OpenSearch."""
-    
+class DataStreamTools:    
     def __init__(self, search_client):
         self.search_client = search_client
     
