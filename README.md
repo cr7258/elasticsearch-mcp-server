@@ -158,7 +158,7 @@ Using `uv` requires cloning the repository locally and specifying the path to th
       "command": "uv",
       "args": [
         "--directory",
-        "path/to/src/elasticsearch_mcp_server",
+        "path/to/elasticsearch-mcp-server",
         "run",
         "elasticsearch-mcp-server"
       ],
@@ -178,7 +178,7 @@ Using `uv` requires cloning the repository locally and specifying the path to th
       "command": "uv",
       "args": [
         "--directory",
-        "path/to/src/elasticsearch_mcp_server",
+        "path/to/elasticsearch-mcp-server",
         "run",
         "elasticsearch-mcp-server"
       ],
@@ -197,7 +197,7 @@ Using `uv` requires cloning the repository locally and specifying the path to th
       "command": "uv",
       "args": [
         "--directory",
-        "path/to/src/elasticsearch_mcp_server",
+        "path/to/elasticsearch-mcp-server",
         "run",
         "opensearch-mcp-server"
       ],
@@ -275,11 +275,7 @@ uv run src/server.py elasticsearch-mcp-server --transport streamable-http --host
 
 ## Compatibility
 
-The MCP server is compatible with Elasticsearch 7.x, 8.x, and 9.x. By default, it uses the Elasticsearch 8.x client (without a suffix). To use the Elasticsearch 7.x client, run the `elasticsearch-mcp-server-es7` variant. For Elasticsearch 9.x, use `elasticsearch-mcp-server-es9`. For example:
-
-```bash
-uvx elasticsearch-mcp-server-es7
-```
+The MCP server is compatible with Elasticsearch 7.x, 8.x, and 9.x. By default, it uses the Elasticsearch 8.x client (without a suffix).
 
 | MCP Server | Elasticsearch |
 | --- | --- |
@@ -287,6 +283,18 @@ uvx elasticsearch-mcp-server-es7
 | elasticsearch-mcp-server | Elasticsearch 8.x |
 | elasticsearch-mcp-server-es9 | Elasticsearch 9.x |
 | opensearch-mcp-server | OpenSearch 1.x, 2.x, 3.x |
+
+ To use the Elasticsearch 7.x client, run the `elasticsearch-mcp-server-es7` variant. For Elasticsearch 9.x, use `elasticsearch-mcp-server-es9`. For example:
+
+```bash
+uvx elasticsearch-mcp-server-es7
+```
+
+If you want to run different Elasticsearch variants (e.g., 7.x or 9.x) locally, simply update the `elasticsearch` dependency version in `pyproject.toml`, then start the server with:
+
+```bash
+uv run src/server.py elasticsearch-mcp-server
+```
 
 ## License
 
