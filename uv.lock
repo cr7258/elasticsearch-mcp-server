@@ -287,7 +287,7 @@ wheels = [
 
 [[package]]
 name = "elasticsearch-mcp-server"
-version = "2.0.15"
+version = "2.0.16"
 source = { editable = "." }
 dependencies = [
     { name = "anthropic" },
@@ -295,6 +295,7 @@ dependencies = [
     { name = "fastmcp" },
     { name = "mcp" },
     { name = "opensearch-py" },
+    { name = "pydantic" },
     { name = "python-dotenv" },
     { name = "tomli" },
     { name = "tomli-w" },
@@ -307,6 +308,7 @@ requires-dist = [
     { name = "fastmcp", specifier = "==2.8.0" },
     { name = "mcp", specifier = "==1.9.2" },
     { name = "opensearch-py", specifier = "==2.8.0" },
+    { name = "pydantic", specifier = ">=2.11.0,<2.12.0" },
     { name = "python-dotenv", specifier = "==1.1.0" },
     { name = "tomli", specifier = "==2.2.1" },
     { name = "tomli-w", specifier = "==1.2.0" },

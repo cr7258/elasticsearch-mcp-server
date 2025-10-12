@@ -1,6 +1,6 @@
 [project]
 name = "elasticsearch-mcp-server"
-version = "2.0.15"
+version = "2.0.16"
 description = "MCP Server for interacting with Elasticsearch and OpenSearch"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -10,7 +10,7 @@ dependencies = [
     "mcp==1.9.2",
     "python-dotenv==1.1.0",
     "fastmcp==2.8.0",
-    "pydantic>=2.11.0,<2.12.0",  # Pin to 2.11.x to avoid fastmcp compatibility issues
+    "pydantic>=2.11.0,<2.12.0",
     "anthropic==0.49.0",
     "tomli==2.2.1",
     "tomli-w==1.2.0",
