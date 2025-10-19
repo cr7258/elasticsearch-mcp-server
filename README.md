@@ -3,7 +3,7 @@
 
 # Elasticsearch/OpenSearch MCP Server
 
-add new feautre
+add new feautre xxxxx
 [![MseeP.ai Security Assessment Badge](https://mseep.net/pr/cr7258-elasticsearch-mcp-server-badge.png)](https://mseep.ai/app/cr7258-elasticsearch-mcp-server)
 
 [![Trust Score](https://archestra.ai/mcp-catalog/api/badge/quality/cr7258/elasticsearch-mcp-server)](https://archestra.ai/mcp-catalog/cr7258__elasticsearch-mcp-server)
