@@ -74,6 +74,9 @@ The MCP server supports the following environment variables:
 
 ### Disable High-Risk Operations
 
+- `DISABLE_HIGH_RISK_OPERATIONS`: Set to `true` to disable all write operations (default: `false`)
+- `DISABLE_OPERATIONS`: Comma-separated list of specific operations to disable (optional, uses default write operations list if not set)
+
 When `DISABLE_HIGH_RISK_OPERATIONS` is set to true, all MCP tools that perform write operations are completely hidden from the MCP client. In this mode, the following MCP tools are disabled by default.
 
 - **Index Operations:**
@@ -96,13 +99,13 @@ When `DISABLE_HIGH_RISK_OPERATIONS` is set to true, all MCP tools that perform w
 - **General API Operations:**
   - `general_api_request`
 
-Optionally, you can specify a comma-separated list of operations to disable in the `DISABLED_OPERATIONS` environment variable.
+Optionally, you can specify a comma-separated list of operations to disable in the `DISABLE_OPERATIONS` environment variable.
 
 ```bash
 # Disable High-Risk Operations
 export DISABLE_HIGH_RISK_OPERATIONS=true
 # Disable specific operations only
-export DISABLED_OPERATIONS="delete_index,delete_document,delete_by_query"
+export DISABLE_OPERATIONS="delete_index,delete_document,delete_by_query"
 ```
 
 ## Start Elasticsearch/OpenSearch Cluster

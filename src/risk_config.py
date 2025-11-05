@@ -52,7 +52,7 @@ class RiskManager:
     def _get_disabled_operations(self) -> Set[str]:
         """Get the set of operations that should be disabled."""
         # Check for custom disabled operations list
-        custom_ops = os.environ.get("DISABLED_OPERATIONS", "")
+        custom_ops = os.environ.get("DISABLE_OPERATIONS", "")
         if custom_ops:
             # User provided custom list
             return set(op.strip() for op in custom_ops.split(",") if op.strip())
@@ -65,16 +65,11 @@ class RiskManager:
     
     def is_operation_allowed(self, tool_class_name: str, operation_name: str) -> bool:
         """Check if an operation is allowed to be executed."""
-        # Check if this specific operation is in the disabled list
+        # Only check against the disabled_operations set
+        # (which is either custom or default based on environment variables)
         if operation_name in self.disabled_operations:
             self.logger.info(f"Operation '{operation_name}' from {tool_class_name} is disabled")
             return False
-        
-        # Check if it's a high-risk operation by default
-        if tool_class_name in HIGH_RISK_OPERATIONS:
-            if operation_name in HIGH_RISK_OPERATIONS[tool_class_name]:
-                self.logger.info(f"High-risk operation '{operation_name}' from {tool_class_name} is disabled")
-                return False
         
         return True
 
