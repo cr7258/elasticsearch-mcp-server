@@ -57,7 +57,7 @@ https://github.com/user-attachments/assets/f7409e31-fac4-4321-9c94-b0ff2ea7ff15
 
 ## Configure Environment Variables
 
-The MCP server supports the following environment variables for authentication:
+The MCP server supports the following environment variables:
 
 ### Basic Authentication (Username/Password)
 - `ELASTICSEARCH_USERNAME`: Username for basic authentication
@@ -68,9 +68,42 @@ The MCP server supports the following environment variables for authentication:
 ### API Key Authentication (Elasticsearch only) - Recommended
 - `ELASTICSEARCH_API_KEY`: API key for [Elasticsearch](https://www.elastic.co/docs/deploy-manage/api-keys/elasticsearch-api-keys) or [Elastic Cloud](https://www.elastic.co/docs/deploy-manage/api-keys/elastic-cloud-api-keys) Authentication.
 
-### Other Configuration
+### Connection Settings
 - `ELASTICSEARCH_HOSTS` / `OPENSEARCH_HOSTS`: Comma-separated list of hosts (default: `https://localhost:9200`)
 - `ELASTICSEARCH_VERIFY_CERTS` / `OPENSEARCH_VERIFY_CERTS`: Whether to verify SSL certificates (default: `false`)
+
+### Disable High-Risk Operations
+
+When `DISABLE_HIGH_RISK_OPERATIONS` is set to true, all MCP tools that perform write operations are completely hidden from the MCP client. In this mode, the following MCP tools are disabled by default.
+
+- **Index Operations:**
+  - `create_index`
+  - `delete_index`
+  
+- **Document Operations:**
+  - `index_document`
+  - `delete_document`
+  - `delete_by_query`
+  
+- **Data Stream Operations:**
+  - `create_data_stream`
+  - `delete_data_stream`
+  
+- **Alias Operations:**
+  - `put_alias`
+  - `delete_alias`
+  
+- **General API Operations:**
+  - `general_api_request`
+
+Optionally, you can specify a comma-separated list of operations to disable in the `DISABLED_OPERATIONS` environment variable.
+
+```bash
+# Disable High-Risk Operations
+export DISABLE_HIGH_RISK_OPERATIONS=true
+# Disable specific operations only
+export DISABLED_OPERATIONS="delete_index,delete_document,delete_by_query"
+```
 
 ## Start Elasticsearch/OpenSearch Cluster
 
