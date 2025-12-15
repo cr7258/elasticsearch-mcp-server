@@ -25,14 +25,22 @@ def create_search_client(engine_type: str) -> SearchClient:
     username = os.environ.get(f"{prefix}_USERNAME")
     password = os.environ.get(f"{prefix}_PASSWORD")
     api_key = os.environ.get(f"{prefix}_API_KEY")
-    verify_certs = os.environ.get(f"{prefix}_VERIFY_CERTS", "false").lower() == "true"
+    verify_certs = os.environ.get("VERIFY_CERTS", "false").lower() == "true"
+    timeout_str = os.environ.get("REQUEST_TIMEOUT")
+    timeout = None
+    if timeout_str:
+        try:
+            timeout = float(timeout_str)
+        except ValueError:
+            pass  # Invalid value, use default timeout
     
     config = {
         "hosts": hosts,
         "username": username,
         "password": password,
         "api_key": api_key,
-        "verify_certs": verify_certs
+        "verify_certs": verify_certs,
+        "timeout": timeout
     }
     
     return SearchClient(config, engine_type)

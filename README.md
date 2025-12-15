@@ -70,7 +70,8 @@ The MCP server supports the following environment variables:
 
 ### Connection Settings
 - `ELASTICSEARCH_HOSTS` / `OPENSEARCH_HOSTS`: Comma-separated list of hosts (default: `https://localhost:9200`)
-- `ELASTICSEARCH_VERIFY_CERTS` / `OPENSEARCH_VERIFY_CERTS`: Whether to verify SSL certificates (default: `false`)
+- `VERIFY_CERTS`: Whether to verify SSL certificates (default: `false`)
+- `REQUEST_TIMEOUT`: Request timeout in seconds (optional, uses client default if not set)
 
 ### Disable High-Risk Operations
 
