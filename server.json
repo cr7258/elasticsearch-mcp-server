@@ -2,7 +2,6 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
   "name": "io.github.cr7258/elasticsearch-mcp-server",
   "description": "MCP server for interacting with Elasticsearch",
-  "status": "active",
   "repository": {
     "url": "https://github.com/cr7258/elasticsearch-mcp-server",
     "source": "github"
@@ -10,50 +9,56 @@
   "version": "2.0.17",
   "packages": [
     {
-      "registry_type": "pypi",
-      "registry_base_url": "https://pypi.org",
+      "registryType": "pypi",
       "identifier": "elasticsearch-mcp-server",
       "version": "2.0.17",
       "transport": {
         "type": "stdio"
       },
-      "environment_variables": [
+      "environmentVariables": [
         {
           "name": "ELASTICSEARCH_HOSTS",
           "description": "Comma-separated list of Elasticsearch hosts (e.g., https://localhost:9200)",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "default": "https://localhost:9200"
         },
         {
           "name": "ELASTICSEARCH_API_KEY",
           "description": "API key for Elasticsearch or Elastic Cloud authentication (recommended)",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": true
+          "isSecret": true
         },
         {
           "name": "ELASTICSEARCH_USERNAME",
           "description": "Username for basic authentication (alternative to API key)",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false
+          "isSecret": false
         },
         {
           "name": "ELASTICSEARCH_PASSWORD",
           "description": "Password for basic authentication (used with ELASTICSEARCH_USERNAME)",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": true
+          "isSecret": true
         },
         {
           "name": "VERIFY_CERTS",
           "description": "Whether to verify SSL certificates (true/false)",
-          "is_required": false,
+          "isRequired": false,
           "format": "boolean",
-          "is_secret": false,
+          "isSecret": false,
           "default": "false"
+        },
+        {
+          "name": "REQUEST_TIMEOUT",
+          "description": "Request timeout in seconds (e.g., 60 or 10.5)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
         }
       ]
     }
