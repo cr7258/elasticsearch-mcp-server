@@ -48,7 +48,7 @@
           "is_secret": true
         },
         {
-          "name": "ELASTICSEARCH_VERIFY_CERTS",
+          "name": "VERIFY_CERTS",
           "description": "Whether to verify SSL certificates (true/false)",
           "is_required": false,
           "format": "boolean",
