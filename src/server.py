@@ -8,6 +8,7 @@ from fastmcp import FastMCP
 from src.auth import BearerAuthMiddleware
 from src.clients import create_search_client
 from src.tools.alias import AliasTools
+from src.tools.analyzer import AnalyzerTools
 from src.tools.cluster import ClusterTools
 from src.tools.data_stream import DataStreamTools
 from src.tools.document import DocumentTools
@@ -79,6 +80,7 @@ class SearchMCPServer:
             AliasTools,
             DataStreamTools,
             GeneralTools,
+            AnalyzerTools,
         ]
         # Register all tools
         register.register_all_tools(tool_classes)
