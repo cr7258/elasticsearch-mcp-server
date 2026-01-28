@@ -73,6 +73,25 @@ The MCP server supports the following environment variables:
 - `VERIFY_CERTS`: Whether to verify SSL certificates (default: `false`)
 - `REQUEST_TIMEOUT`: Request timeout in seconds (optional, uses client default if not set)
 
+### MCP Server Authentication (HTTP Transports Only)
+
+When running the MCP server with HTTP-based transports (SSE or Streamable HTTP), you can enable Bearer token authentication to protect the server from unauthorized access.
+
+- `MCP_API_KEY`: API key for MCP server authentication. Clients must include `Authorization: Bearer <MCP_API_KEY>` header.
+
+**Important Security Notes:**
+- Authentication is **only applicable** for HTTP transports (`sse`, `streamable-http`). The `stdio` transport uses local process communication and doesn't require authentication.
+- If `MCP_API_KEY` is **not set**, the MCP server will be accessible **without authentication**. This is a security risk when exposing the server over a network.
+- For production deployments with HTTP transports, **always set `MCP_API_KEY`**.
+
+```bash
+# Generate a secure API key (example using openssl)
+export MCP_API_KEY=$(openssl rand -base64 32)
+
+# Or set a custom API key
+export MCP_API_KEY="your-secure-api-key-here"
+```
+
 ### Disable High-Risk Operations
 
 - `DISABLE_HIGH_RISK_OPERATIONS`: Set to `true` to disable all write operations (default: `false`)

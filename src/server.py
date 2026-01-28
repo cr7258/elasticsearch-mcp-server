@@ -1,9 +1,11 @@
 import logging
+import os
 import sys
 import argparse
 
 from fastmcp import FastMCP
 
+from src.auth import BearerAuthMiddleware
 from src.clients import create_search_client
 from src.tools.alias import AliasTools
 from src.tools.cluster import ClusterTools
@@ -15,12 +17,20 @@ from src.tools.register import ToolsRegister
 from src.version import __version__ as VERSION
 
 class SearchMCPServer:
-    def __init__(self, engine_type):
+    def __init__(self, engine_type, api_key: str | None = None):
+        """
+        Initialize the MCP server.
+
+        Args:
+            engine_type: Type of search engine ("elasticsearch" or "opensearch")
+            api_key: API key for Bearer token authentication.
+                     If provided, authentication middleware will be added.
+        """
         # Set engine type
         self.engine_type = engine_type
         self.name = f"{self.engine_type}-mcp-server"
         self.mcp = FastMCP(self.name)
-        
+
         # Configure logging
         logging.basicConfig(
             level=logging.INFO,
@@ -28,18 +38,32 @@ class SearchMCPServer:
         )
         self.logger = logging.getLogger(__name__)
         self.logger.info(f"Initializing {self.name}, Version: {VERSION}")
-        
+
+        # Setup authentication middleware if API key is provided
+        if api_key:
+            self._setup_auth(api_key)
+
         # Create the corresponding search client
         self.search_client = create_search_client(self.engine_type)
-        
+
         # Initialize tools
         self._register_tools()
+
+    def _setup_auth(self, api_key: str):
+        """Setup authentication middleware.
+
+        Args:
+            api_key: The API key for Bearer token authentication.
+        """
+        auth_middleware = BearerAuthMiddleware(api_key=api_key)
+        self.mcp.add_middleware(auth_middleware)
+        self.logger.info("Authentication middleware added - Bearer token required")
 
     def _register_tools(self):
         """Register all MCP tools."""
         # Create a tools register
         register = ToolsRegister(self.logger, self.search_client, self.mcp)
-        
+
         # Define all tool classes to register
         tool_classes = [
             IndexTools,
@@ -48,14 +72,14 @@ class SearchMCPServer:
             AliasTools,
             DataStreamTools,
             GeneralTools,
-        ]        
+        ]
         # Register all tools
         register.register_all_tools(tool_classes)
 
 
 def run_search_server(engine_type, transport, host, port, path):
     """Run search server with specified engine type and transport options.
-    
+
     Args:
         engine_type: Type of search engine to use ("elasticsearch" or "opensearch")
         transport: Transport protocol to use ("stdio", "streamable-http", or "sse")
@@ -63,9 +87,18 @@ def run_search_server(engine_type, transport, host, port, path):
         port: Port to bind to when using HTTP transports
         path: URL path prefix for HTTP transports
     """
-    
-    server = SearchMCPServer(engine_type=engine_type)
-    
+    # Check authentication configuration for HTTP-based transports
+    # stdio transport is local process communication, no auth needed
+    api_key = None
+    if transport in ["streamable-http", "sse"]:
+        api_key = os.environ.get("MCP_API_KEY")
+        if not api_key:
+            logging.warning(
+                "MCP_API_KEY not set. Server will be accessible without authentication!"
+            )
+
+    server = SearchMCPServer(engine_type=engine_type, api_key=api_key)
+
     if transport in ["streamable-http", "sse"]:
         server.logger.info(f"Starting {server.name} with {transport} transport on {host}:{port}{path}")
         server.mcp.run(transport=transport, host=host, port=port, path=path)
@@ -75,7 +108,7 @@ def run_search_server(engine_type, transport, host, port, path):
 
 def parse_server_args():
     """Parse command line arguments for the MCP server.
-    
+
     Returns:
         Parsed arguments
     """
@@ -101,22 +134,22 @@ def parse_server_args():
         "--path", "-P",
         help="URL path prefix for HTTP transports (default: /mcp for streamable-http, /sse for sse)"
     )
-    
+
     args = parser.parse_args()
-    
+
     # Set default path based on transport type if not specified
     if args.path is None:
         if args.transport == "sse":
             args.path = "/sse"
         else:
             args.path = "/mcp"
-            
+
     return args
 
 def elasticsearch_mcp_server():
     """Entry point for Elasticsearch MCP server."""
     args = parse_server_args()
-    
+
     # Run the server with the specified options
     run_search_server(
         engine_type="elasticsearch",
@@ -129,7 +162,7 @@ def elasticsearch_mcp_server():
 def opensearch_mcp_server():
     """Entry point for OpenSearch MCP server."""
     args = parse_server_args()
-    
+
     # Run the server with the specified options
     run_search_server(
         engine_type="opensearch",
@@ -144,18 +177,18 @@ if __name__ == "__main__":
     if len(sys.argv) <= 1 or sys.argv[1] not in ["elasticsearch-mcp-server", "opensearch-mcp-server"]:
         print("Error: First argument must be 'elasticsearch-mcp-server' or 'opensearch-mcp-server'")
         sys.exit(1)
-        
+
     # Determine engine type based on the first argument
     engine_type = "elasticsearch"  # Default
     if sys.argv[1] == "opensearch-mcp-server":
         engine_type = "opensearch"
-        
+
     # Remove the first argument so it doesn't interfere with argparse
     sys.argv.pop(1)
-    
+
     # Parse command line arguments
     args = parse_server_args()
-    
+
     # Run the server with the specified options
     run_search_server(
         engine_type=engine_type,
