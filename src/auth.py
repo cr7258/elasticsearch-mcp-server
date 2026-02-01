@@ -91,10 +91,6 @@ class BearerAuthMiddleware(Middleware):
         Raises:
             ToolError: If authentication fails
         """
-        # Skip auth if no API key is configured
-        if not self._api_key:
-            return
-
         token = self._get_bearer_token()
 
         if not token:
