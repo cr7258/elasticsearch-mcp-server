@@ -36,15 +36,7 @@ class BearerAuthMiddleware(Middleware):
         Args:
             api_key: The API key to validate against. If None, reads from MCP_API_KEY env var.
         """
-        self._api_key = api_key or os.environ.get("MCP_API_KEY")
-        if self._api_key:
-            logger.info("Bearer token authentication enabled for MCP server")
-        else:
-            logger.warning(
-                "MCP_API_KEY not set - authentication is DISABLED. "
-                "Anyone can access this MCP server without authentication. "
-                "Set MCP_API_KEY environment variable to enable authentication."
-            )
+        self._api_key = api_key
 
     @property
     def is_enabled(self) -> bool:
