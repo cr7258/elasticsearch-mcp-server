@@ -42,6 +42,13 @@ class SearchMCPServer:
         # Setup authentication middleware if API key is provided
         if api_key:
             self._setup_auth(api_key)
+            self.logger.info("Bearer token authentication enabled for MCP server")
+        else:
+            self.logger.warning(
+                "MCP_API_KEY not set - authentication is DISABLED. "
+                "Anyone can access this MCP server without authentication. "
+                "Set MCP_API_KEY environment variable to enable authentication."
+            )
 
         # Create the corresponding search client
         self.search_client = create_search_client(self.engine_type)
