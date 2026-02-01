@@ -75,11 +75,12 @@ class BearerAuthMiddleware(Middleware):
             if not auth_header:
                 return None
 
-            # Check for Bearer scheme
-            if not auth_header.startswith("Bearer "):
+            # Check for Bearer scheme (case-insensitive per RFC 6750)
+            scheme, _, token = auth_header.partition(" ")
+            if scheme.lower() != "bearer" or not token:
                 return None
 
-            return auth_header.removeprefix("Bearer ").strip()
+            return token.strip()
         except Exception as e:
             logger.debug(f"Error getting headers: {e}")
             return None
