@@ -6,12 +6,12 @@
     "url": "https://github.com/cr7258/elasticsearch-mcp-server",
     "source": "github"
   },
-  "version": "2.0.18",
+  "version": "2.0.19",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "elasticsearch-mcp-server",
-      "version": "2.0.18",
+      "version": "2.0.19",
       "transport": {
         "type": "stdio"
       },
