@@ -55,6 +55,10 @@ https://github.com/user-attachments/assets/f7409e31-fac4-4321-9c94-b0ff2ea7ff15
 - `put_alias`: Create or update an alias for a specific index.
 - `delete_alias`: Delete an alias for a specific index.
 
+### Analyzer Operations
+
+- `analyze_text`: Analyze text using a specified analyzer or custom analysis chain. Useful for debugging search queries and understanding how text is tokenized.
+
 ## Configure Environment Variables
 
 The MCP server supports the following environment variables:
