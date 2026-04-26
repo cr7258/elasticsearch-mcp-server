@@ -1,0 +1,45 @@
+# Version control
+.git
+.gitignore
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Environment files (never bake secrets into the image)
+.env
+.env.*
+!.env.example
+
+# Development tooling
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Helm
+helm/
+
+# Documentation (README.md is needed by hatchling to build the package)
+CONTRIBUTING.md
+*.md
+!README.md
+
+# Clients and examples
+mcp_client/
+
+# CI / release tooling
+.github/
+Makefile
+cliff.toml

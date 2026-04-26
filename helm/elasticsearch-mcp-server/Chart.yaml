@@ -1,0 +1,16 @@
+apiVersion: v2
+name: elasticsearch-mcp-server
+description: MCP Server for interacting with Elasticsearch and OpenSearch clusters
+type: application
+version: 0.1.0
+appVersion: "2.0.19"
+keywords:
+  - elasticsearch
+  - opensearch
+  - mcp
+  - ai
+  - llm
+home: https://github.com/cr7258/elasticsearch-mcp-server
+maintainers:
+  - name: treezio
+    url: https://github.com/treezio

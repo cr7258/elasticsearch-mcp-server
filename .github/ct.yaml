@@ -1,0 +1,8 @@
+remote: origin
+target-branch: main
+chart-dirs:
+  - helm
+check-version-increment: true
+ignored-path-prefixes:
+  - helm/elasticsearch-mcp-server/README.md
+  - helm/elasticsearch-mcp-server/tests/

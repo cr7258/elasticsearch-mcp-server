@@ -1,0 +1,112 @@
+suite: "Deployment - server configuration"
+templates:
+  - templates/deployment.yaml
+release:
+  name: test
+tests:
+
+  - it: should fail rendering when transport is stdio
+    set:
+      server.transport: stdio
+    asserts:
+      - failedTemplate:
+          errorMessage: "server.transport 'stdio' is not supported in Kubernetes. Use 'streamable-http' or 'sse'."
+
+  - it: should use streamable-http transport and /mcp path by default
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].args
+          value:
+            - "--transport"
+            - "streamable-http"
+            - "--host"
+            - "0.0.0.0"
+            - "--port"
+            - "8000"
+            - "--path"
+            - "/mcp"
+
+  - it: should default path to /sse when transport is sse
+    set:
+      server.transport: sse
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: "/sse"
+      - notContains:
+          path: spec.template.spec.containers[0].args
+          content: "/mcp"
+
+  - it: should use custom path when explicitly set
+    set:
+      server.path: /custom-mcp
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: "/custom-mcp"
+
+  - it: should set ENGINE_TYPE to elasticsearch by default
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ENGINE_TYPE
+            value: "elasticsearch"
+
+  - it: should set ENGINE_TYPE to opensearch when configured
+    set:
+      server.engineType: opensearch
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ENGINE_TYPE
+            value: "opensearch"
+
+  - it: should configure liveness probe on /healthz
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /healthz
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.port
+          value: http
+
+  - it: should configure readiness probe on /readyz
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /readyz
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.port
+          value: http
+
+  - it: should run as non-root with read-only root filesystem
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext.runAsNonRoot
+          value: true
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem
+          value: true
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation
+          value: false
+
+  - it: should set replicas from replicaCount when autoscaling is disabled
+    set:
+      replicaCount: 3
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 3
+
+  - it: should set DISABLE_HIGH_RISK_OPERATIONS env var
+    set:
+      risk.disableHighRiskOperations: "true"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DISABLE_HIGH_RISK_OPERATIONS
+            value: "true"

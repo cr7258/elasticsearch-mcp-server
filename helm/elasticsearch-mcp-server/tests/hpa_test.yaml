@@ -1,0 +1,43 @@
+suite: "HorizontalPodAutoscaler"
+templates:
+  - templates/hpa.yaml
+release:
+  name: test
+tests:
+
+  - it: should not create an HPA when autoscaling is disabled
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should create an HPA when autoscaling is enabled
+    set:
+      autoscaling.enabled: true
+      autoscaling.minReplicas: 2
+      autoscaling.maxReplicas: 10
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: HorizontalPodAutoscaler
+      - equal:
+          path: spec.minReplicas
+          value: 2
+      - equal:
+          path: spec.maxReplicas
+          value: 10
+
+  - it: should include CPU metric when targetCPUUtilizationPercentage is set
+    set:
+      autoscaling.enabled: true
+      autoscaling.targetCPUUtilizationPercentage: 75
+    asserts:
+      - contains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: cpu
+              target:
+                type: Utilization
+                averageUtilization: 75

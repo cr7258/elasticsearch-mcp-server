@@ -356,6 +356,12 @@ If you want to run different Elasticsearch variants (e.g., 7.x or 9.x) locally, 
 uv run src/server.py elasticsearch-mcp-server
 ```
 
+## Kubernetes Deployment
+
+The Docker image is published to `ghcr.io/cr7258/elasticsearch-mcp-server` and the Helm chart is available as an OCI artifact at `oci://ghcr.io/cr7258/charts/elasticsearch-mcp-server` repository.
+
+For full installation instructions, configuration reference, and usage examples see the **[Helm chart README](helm/elasticsearch-mcp-server/README.md)**.
+
 ## License
 
 This project is licensed under the Apache License Version 2.0 - see the [LICENSE](LICENSE) file for details.

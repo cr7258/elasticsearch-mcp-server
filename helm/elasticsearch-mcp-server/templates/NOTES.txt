@@ -1,0 +1,41 @@
+Elasticsearch MCP Server {{ .Chart.AppVersion }} deployed successfully.
+
+Engine:    {{ .Values.server.engineType }}
+Transport: {{ .Values.server.transport }}
+MCP path:  {{ include "elasticsearch-mcp-server.serverPath" . }}
+
+{{- if .Values.ingress.enabled }}
+
+MCP endpoint:
+{{- range $host := .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ include "elasticsearch-mcp-server.serverPath" $ }}
+{{- end }}
+
+{{- else if contains "NodePort" .Values.service.type }}
+
+MCP endpoint (NodePort):
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "elasticsearch-mcp-server.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo "http://$NODE_IP:$NODE_PORT{{ include "elasticsearch-mcp-server.serverPath" . }}"
+
+{{- else if contains "LoadBalancer" .Values.service.type }}
+
+MCP endpoint (LoadBalancer — may take a few minutes to become available):
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "elasticsearch-mcp-server.fullname" . }} --template "{{ "{{ range (index .status.loadBalancer.ingress 0) }}{{ . }}{{ end }}" }}")
+  echo "http://$SERVICE_IP:{{ .Values.service.port }}{{ include "elasticsearch-mcp-server.serverPath" . }}"
+
+{{- else }}
+
+MCP endpoint (port-forward):
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "elasticsearch-mcp-server.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+  echo "MCP server: http://127.0.0.1:{{ .Values.service.port }}{{ include "elasticsearch-mcp-server.serverPath" . }}"
+
+{{- end }}
+
+{{- if not .Values.auth.credentials.mcpApiKey }}
+{{- if not .Values.auth.existingSecret }}
+
+⚠️  WARNING: MCP_API_KEY is not set. The MCP server is accessible WITHOUT authentication.
+   Set auth.credentials.mcpApiKey or reference an existing secret via auth.existingSecret.
+{{- end }}
+{{- end }}

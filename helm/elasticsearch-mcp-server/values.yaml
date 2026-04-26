@@ -1,0 +1,197 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/cr7258/elasticsearch-mcp-server
+  pullPolicy: IfNotPresent
+  # Defaults to .Chart.AppVersion when empty
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: false
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# ---------------------------------------------------------------------------
+# MCP server configuration
+# ---------------------------------------------------------------------------
+server:
+  # "elasticsearch" or "opensearch"
+  engineType: elasticsearch
+  # Transport protocol. Use streamable-http or sse for Kubernetes.
+  # stdio is for local process usage only.
+  transport: streamable-http
+  host: "0.0.0.0"
+  port: 8000
+  # URL path for the MCP endpoint.
+  # Defaults to /mcp (streamable-http) or /sse (sse) when left empty.
+  path: ""
+
+# ---------------------------------------------------------------------------
+# Elasticsearch connection settings (used when server.engineType=elasticsearch)
+# ---------------------------------------------------------------------------
+elasticsearch:
+  hosts: "https://elasticsearch:9200"
+  verifyCerts: "false"
+  requestTimeout: ""
+
+# ---------------------------------------------------------------------------
+# OpenSearch connection settings (used when server.engineType=opensearch)
+# ---------------------------------------------------------------------------
+opensearch:
+  hosts: "https://opensearch:9200"
+  verifyCerts: "false"
+  requestTimeout: ""
+
+# ---------------------------------------------------------------------------
+# Risk / write-operation control
+# ---------------------------------------------------------------------------
+risk:
+  # Set to "true" to disable ALL write/delete operations
+  disableHighRiskOperations: "false"
+  # Comma-separated list of specific operations to disable, e.g.:
+  # "delete_index,delete_document,delete_by_query"
+  disabledOperations: ""
+
+# ---------------------------------------------------------------------------
+# Secret management
+#
+# Option A — provide credentials here (chart creates a Secret):
+#   Set the relevant fields under auth.credentials and leave auth.existingSecret empty.
+#
+# Option B — point to an existing Secret (e.g. created by External Secrets Operator):
+#   auth.existingSecret: my-secret-name
+#   Optionally override auth.existingSecretKeys.* if your key names differ.
+# ---------------------------------------------------------------------------
+auth:
+  # Name of a pre-existing Secret. When set, no Secret is created by this chart.
+  existingSecret: ""
+  # Key names inside the Secret (applies to both chart-created and existing secrets)
+  existingSecretKeys:
+    elasticsearchUsername: "elasticsearch-username"
+    elasticsearchPassword: "elasticsearch-password"
+    elasticsearchApiKey: "elasticsearch-api-key"
+    opensearchUsername: "opensearch-username"
+    opensearchPassword: "opensearch-password"
+    mcpApiKey: "mcp-api-key"
+  # Credentials — only used when existingSecret is empty.
+  # Populate only the fields relevant to your engine type and auth method.
+  credentials:
+    # Elasticsearch: username/password or API key (API key takes precedence)
+    elasticsearchUsername: ""
+    elasticsearchPassword: ""
+    elasticsearchApiKey: ""
+    # OpenSearch: username/password
+    opensearchUsername: ""
+    opensearchPassword: ""
+    # MCP Bearer token. Required for HTTP transports in production.
+    mcpApiKey: ""
+
+# ---------------------------------------------------------------------------
+# Service
+# ---------------------------------------------------------------------------
+service:
+  type: ClusterIP
+  port: 8000
+  annotations: {}
+
+# ---------------------------------------------------------------------------
+# Ingress
+# ---------------------------------------------------------------------------
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    # nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+  hosts:
+    - host: elasticsearch-mcp-server.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  # - secretName: elasticsearch-mcp-server-tls
+  #   hosts:
+  #     - elasticsearch-mcp-server.local
+
+# ---------------------------------------------------------------------------
+# Resources
+# ---------------------------------------------------------------------------
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# ---------------------------------------------------------------------------
+# Health probes
+# /healthz — liveness  (is the process alive?)
+# /readyz  — readiness (is the search engine reachable?)
+# ---------------------------------------------------------------------------
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 10
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 10
+  failureThreshold: 3
+
+# ---------------------------------------------------------------------------
+# Autoscaling
+# ---------------------------------------------------------------------------
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+# ---------------------------------------------------------------------------
+# Extra configuration
+# ---------------------------------------------------------------------------
+# Additional environment variables injected into the container
+extraEnv: []
+# - name: EXTRA_VAR
+#   value: "value"
+
+# Extra volumes and mounts (e.g. for custom CA certificates)
+volumes: []
+volumeMounts: []
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

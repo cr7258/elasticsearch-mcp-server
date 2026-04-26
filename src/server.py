@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import sys
@@ -5,6 +6,8 @@ import argparse
 
 from fastmcp import FastMCP
 from fastmcp.server.auth import StaticTokenVerifier
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response
 
 from src.clients import create_search_client
 from src.tools.alias import AliasTools
@@ -60,6 +63,7 @@ class SearchMCPServer:
 
         # Initialize tools
         self._register_tools()
+        self._register_health_routes()
 
     def _create_fastmcp_auth(self, api_key: str):
         """Create FastMCP built-in authentication provider.
@@ -79,6 +83,43 @@ class SearchMCPServer:
             }
         }
         return StaticTokenVerifier(tokens=tokens)
+
+    def _register_health_routes(self):
+        """Register /healthz (liveness) and /readyz (readiness) HTTP endpoints.
+
+        These are only served when running with an HTTP transport (sse or
+        streamable-http) and are designed for Kubernetes probes.
+        """
+
+        @self.mcp.custom_route("/healthz", methods=["GET"], include_in_schema=False)
+        async def liveness(request: Request) -> Response:
+            return JSONResponse({"status": "ok"})
+
+        @self.mcp.custom_route("/readyz", methods=["GET"], include_in_schema=False)
+        async def readiness(request: Request) -> Response:
+            try:
+                reachable = await asyncio.wait_for(
+                    asyncio.to_thread(self.search_client.client.ping),
+                    timeout=5.0,
+                )
+            except asyncio.TimeoutError:
+                self.logger.warning("Readiness check timed out")
+                return JSONResponse(
+                    {"status": "timeout", "search_engine": self.engine_type},
+                    status_code=503,
+                )
+            except Exception as exc:
+                self.logger.warning("Readiness check failed: %s", exc)
+                return JSONResponse(
+                    {"status": "error", "search_engine": self.engine_type},
+                    status_code=503,
+                )
+            if reachable:
+                return JSONResponse({"status": "ok", "search_engine": self.engine_type})
+            return JSONResponse(
+                {"status": "unavailable", "search_engine": self.engine_type},
+                status_code=503,
+            )
 
     def _register_tools(self):
         """Register all MCP tools."""

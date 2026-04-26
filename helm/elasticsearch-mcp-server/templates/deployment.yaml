@@ -1,0 +1,186 @@
+{{- if eq .Values.server.transport "stdio" }}
+{{- fail "server.transport 'stdio' is not supported in Kubernetes. Use 'streamable-http' or 'sse'." }}
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "elasticsearch-mcp-server.fullname" . }}
+  labels:
+    {{- include "elasticsearch-mcp-server.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "elasticsearch-mcp-server.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        # Restart pods when the Secret content changes
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "elasticsearch-mcp-server.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "elasticsearch-mcp-server.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - "--transport"
+            - {{ .Values.server.transport | quote }}
+            - "--host"
+            - {{ .Values.server.host | quote }}
+            - "--port"
+            - {{ .Values.server.port | quote }}
+            - "--path"
+            - {{ include "elasticsearch-mcp-server.serverPath" . | quote }}
+          env:
+            - name: ENGINE_TYPE
+              value: {{ .Values.server.engineType | quote }}
+
+            {{- if eq .Values.server.engineType "opensearch" }}
+            # OpenSearch connection
+            - name: OPENSEARCH_HOSTS
+              value: {{ .Values.opensearch.hosts | quote }}
+            {{- if or .Values.auth.existingSecret .Values.auth.credentials.opensearchUsername }}
+            - name: OPENSEARCH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "elasticsearch-mcp-server.secretName" . }}
+                  key: {{ .Values.auth.existingSecretKeys.opensearchUsername }}
+                  optional: true
+            {{- end }}
+            {{- if or .Values.auth.existingSecret .Values.auth.credentials.opensearchPassword }}
+            - name: OPENSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "elasticsearch-mcp-server.secretName" . }}
+                  key: {{ .Values.auth.existingSecretKeys.opensearchPassword }}
+                  optional: true
+            {{- end }}
+            - name: VERIFY_CERTS
+              value: {{ .Values.opensearch.verifyCerts | quote }}
+            {{- if .Values.opensearch.requestTimeout }}
+            - name: REQUEST_TIMEOUT
+              value: {{ .Values.opensearch.requestTimeout | quote }}
+            {{- end }}
+
+            {{- else }}
+            # Elasticsearch connection
+            - name: ELASTICSEARCH_HOSTS
+              value: {{ .Values.elasticsearch.hosts | quote }}
+            {{- if or .Values.auth.existingSecret .Values.auth.credentials.elasticsearchUsername }}
+            - name: ELASTICSEARCH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "elasticsearch-mcp-server.secretName" . }}
+                  key: {{ .Values.auth.existingSecretKeys.elasticsearchUsername }}
+                  optional: true
+            {{- end }}
+            {{- if or .Values.auth.existingSecret .Values.auth.credentials.elasticsearchPassword }}
+            - name: ELASTICSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "elasticsearch-mcp-server.secretName" . }}
+                  key: {{ .Values.auth.existingSecretKeys.elasticsearchPassword }}
+                  optional: true
+            {{- end }}
+            {{- if or .Values.auth.existingSecret .Values.auth.credentials.elasticsearchApiKey }}
+            - name: ELASTICSEARCH_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "elasticsearch-mcp-server.secretName" . }}
+                  key: {{ .Values.auth.existingSecretKeys.elasticsearchApiKey }}
+                  optional: true
+            {{- end }}
+            - name: VERIFY_CERTS
+              value: {{ .Values.elasticsearch.verifyCerts | quote }}
+            {{- if .Values.elasticsearch.requestTimeout }}
+            - name: REQUEST_TIMEOUT
+              value: {{ .Values.elasticsearch.requestTimeout | quote }}
+            {{- end }}
+            {{- end }}
+
+            # MCP server Bearer token authentication
+            {{- if or .Values.auth.existingSecret .Values.auth.credentials.mcpApiKey }}
+            - name: MCP_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "elasticsearch-mcp-server.secretName" . }}
+                  key: {{ .Values.auth.existingSecretKeys.mcpApiKey }}
+                  optional: true
+            {{- end }}
+
+            # Risk / write-operation control
+            - name: DISABLE_HIGH_RISK_OPERATIONS
+              value: {{ .Values.risk.disableHighRiskOperations | quote }}
+            {{- if .Values.risk.disabledOperations }}
+            - name: DISABLE_OPERATIONS
+              value: {{ .Values.risk.disabledOperations | quote }}
+            {{- end }}
+
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+
+          ports:
+            - name: http
+              containerPort: {{ .Values.server.port }}
+              protocol: TCP
+
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+
+          volumeMounts:
+            # Required when readOnlyRootFilesystem=true: Python needs /tmp for stdlib
+            - name: tmp
+              mountPath: /tmp
+            {{- with .Values.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        {{- with .Values.volumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
