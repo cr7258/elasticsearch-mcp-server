@@ -77,9 +77,4 @@ git rebase upstream/main
 
 ## Release
 
-```bash
-uv sync
-source .venv/bin/activate
-# example: make release version=v0.0.6
-make release version=<RELEASE_VERSION>
-```
+Run the `Release` workflow from GitHub Actions and enter a version such as `v2.1.1`.

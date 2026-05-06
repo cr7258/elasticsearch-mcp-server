@@ -41,5 +41,4 @@ mcp_client/
 
 # CI / release tooling
 .github/
-Makefile
 cliff.toml

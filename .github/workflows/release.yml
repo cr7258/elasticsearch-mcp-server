@@ -1,18 +1,26 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version, for example v2.1.1"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    env:
+      RELEASE_TAG: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
 
       - name: Set up Python
@@ -23,20 +31,92 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install git-cliff
+          python -m pip install uv tomli tomli-w git-cliff
 
-      - name: Get version from tag
-        id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+      - name: Validate release version
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+(\.[0-9]+){2}([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Version must look like v2.1.1"
+            exit 1
+          fi
+
+          if git rev-parse "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Tag $RELEASE_TAG already exists"
+            exit 1
+          fi
+
+          echo "VERSION=${RELEASE_TAG#v}" >> "$GITHUB_ENV"
+
+      - name: Update version files
+        run: |
+          python <<'PY'
+          import os
+          from pathlib import Path
+
+          import tomli
+          import tomli_w
+
+          version = os.environ["VERSION"]
+
+          pyproject_path = Path("pyproject.toml")
+          pyproject = tomli.loads(pyproject_path.read_text())
+          pyproject["project"]["version"] = version
+          pyproject_path.write_bytes(tomli_w.dumps(pyproject).encode())
+
+          Path("src/version.py").write_text(f'__version__ = "{version}"\n')
+
+          chart_path = Path("helm/elasticsearch-mcp-server/Chart.yaml")
+          chart_lines = chart_path.read_text().splitlines()
+          chart_lines = [
+              f"version: {version}" if line.startswith("version: ")
+              else f'appVersion: "{version}"' if line.startswith("appVersion: ")
+              else line
+              for line in chart_lines
+          ]
+          chart_path.write_text("\n".join(chart_lines) + "\n")
+          PY
+
+      - name: Sync lock file
+        run: uv sync
+
+      - name: Commit version update
+        run: |
+          git add pyproject.toml uv.lock src/version.py helm/elasticsearch-mcp-server/Chart.yaml
+
+          if git diff --cached --quiet; then
+            echo "No version file changes to commit"
+            exit 0
+          fi
+
+          git -c user.name="github-actions[bot]" \
+            -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -m "release: update version to $VERSION"
+          git push origin HEAD:main
+
+      - name: Create release tag
+        run: |
+          git -c user.name="github-actions[bot]" \
+            -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            tag -a "$RELEASE_TAG" -m "release: update version to $VERSION"
+          git push origin "$RELEASE_TAG"
 
       - name: Generate changelog
         run: |
           git-cliff --output CHANGELOG.md --latest
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          name: v${{ env.VERSION }}
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_TAG }}
           body_path: CHANGELOG.md
           draft: false
           prerelease: false
+
+      - name: Trigger package publish workflows
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run pypi-publish.yaml --ref "$RELEASE_TAG"
+          gh workflow run docker-publish.yaml --ref "$RELEASE_TAG"
+          gh workflow run helm-chart.yaml --ref "$RELEASE_TAG"

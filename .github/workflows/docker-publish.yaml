@@ -1,8 +1,7 @@
 name: Publish Docker image to GHCR
 
 on:
-  release:
-    types: [published]
+  workflow_dispatch:
 
 jobs:
   build-and-push:
@@ -25,8 +24,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract release tag
-        id: extract_tag
-        run: echo "RELEASE_TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+        run: echo "RELEASE_TAG=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6

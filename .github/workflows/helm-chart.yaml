@@ -1,16 +1,7 @@
 name: Helm Chart
 
 on:
-  pull_request:
-    branches: ["main"]
-    paths:
-      - "helm/**"
-  push:
-    branches: ["main"]
-    paths:
-      - "helm/**"
-      - "!helm/**/README.md"
-      - "!helm/**/tests/**"
+  workflow_dispatch:
 
 jobs:
   lint-test:
@@ -23,35 +14,21 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # required by ct to compare against target branch
 
       - name: Set up Helm
         uses: azure/setup-helm@v4
 
-      - name: Set up chart-testing
-        uses: helm/chart-testing-action@v2
-
       - name: Install helm-unittest plugin
         run: helm plugin install https://github.com/helm-unittest/helm-unittest --version v0.3.2 --verify=false
 
-      - name: Detect changed charts
-        id: list-changed
-        run: |
-          changed=$(ct list-changed --config .github/ct.yaml --target-branch "${{ github.event.repository.default_branch }}")
-          echo "changed=$changed" >> "$GITHUB_OUTPUT"
-
-      - name: Lint changed charts
-        if: steps.list-changed.outputs.changed != ''
-        run: ct lint --config .github/ct.yaml --target-branch "${{ github.event.repository.default_branch }}"
+      - name: Lint chart
+        run: helm lint helm/elasticsearch-mcp-server
 
       - name: Run unit tests
-        if: steps.list-changed.outputs.changed != ''
         run: helm unittest helm/elasticsearch-mcp-server
 
   publish:
     name: Publish to OCI Registry
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: lint-test
     runs-on: ubuntu-latest
     timeout-minutes: 10
