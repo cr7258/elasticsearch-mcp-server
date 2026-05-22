@@ -71,7 +71,7 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Configure Docker host for Elasticsearch
+      - name: Raise vm.max_map_count for search engines
         run: sudo sysctl -w vm.max_map_count=262144
 
       - name: Install uv
@@ -111,7 +111,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Configure Docker host for Elasticsearch
+      - name: Raise vm.max_map_count for search engines
         run: sudo sysctl -w vm.max_map_count=262144
 
       - name: Set up Python
@@ -137,12 +137,13 @@ jobs:
           chmod +x kind
           sudo mv kind /usr/local/bin/kind
 
-      - name: Pull kind and Elasticsearch images
+      - name: Pull kind and search engine images
         run: |
           for image in \
             docker/dockerfile:1 \
             kindest/node:v1.31.0 \
-            docker.elastic.co/elasticsearch/elasticsearch:8.17.2
+            docker.elastic.co/elasticsearch/elasticsearch:8.17.2 \
+            opensearchproject/opensearch:2.11.0
           do
             for attempt in 1 2 3; do
               docker pull "$image" && break
