@@ -1,0 +1,362 @@
+import asyncio
+import contextlib
+import json
+import os
+import shutil
+import subprocess
+import time
+import urllib.request
+from typing import Iterator
+
+import pytest
+from fastmcp import Client
+
+
+CLUSTER_NAME = os.environ.get("KIND_CLUSTER_NAME", "elasticsearch-mcp-server-e2e")
+IMAGE_REPOSITORY = os.environ.get(
+    "KIND_E2E_IMAGE_REPOSITORY", "elasticsearch-mcp-server"
+)
+IMAGE_TAG = os.environ.get("KIND_E2E_IMAGE_TAG", "e2e")
+IMAGE = f"{IMAGE_REPOSITORY}:{IMAGE_TAG}"
+NAMESPACE = "default"
+
+DEFAULT_RELEASE_NAME = "mcp-e2e"
+SECURE_RELEASE_NAME = "mcp-e2e-secure"
+MULTI_CLUSTER_RELEASE_NAME = "mcp-e2e-multi"
+
+
+def _run(command, input_text=None, timeout=300):
+    return subprocess.run(
+        command,
+        input=input_text,
+        text=True,
+        capture_output=True,
+        check=True,
+        timeout=timeout,
+    )
+
+
+def _run_with_retries(command, attempts=3, delay=10, timeout=300):
+    last_error = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return _run(command, timeout=timeout)
+        except subprocess.CalledProcessError as exc:
+            last_error = exc
+            if attempt == attempts:
+                raise
+            time.sleep(delay)
+    raise last_error
+
+
+def _tool_available(name: str) -> bool:
+    return shutil.which(name) is not None
+
+
+def _kind_cluster_exists(cluster_name: str) -> bool:
+    result = subprocess.run(
+        ["kind", "get", "clusters"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    return cluster_name in result.stdout.splitlines()
+
+
+def kubectl_json(*args):
+    result = _run(["kubectl", *args, "-o", "json"])
+    return json.loads(result.stdout)
+
+
+def wait_for_http(url: str, timeout: int = 60, headers: dict | None = None) -> dict:
+    deadline = time.time() + timeout
+    last_error = None
+
+    while time.time() < deadline:
+        try:
+            request = urllib.request.Request(url, headers=headers or {})
+            with urllib.request.urlopen(request, timeout=5) as response:
+                return {
+                    "status": response.status,
+                    "body": response.read().decode("utf-8"),
+                }
+        except Exception as exc:
+            last_error = exc
+            time.sleep(1)
+
+    raise TimeoutError(f"Timed out waiting for {url}: {last_error}")
+
+
+def call_mcp_tool(url: str, tool_name: str, arguments: dict | None = None, *, auth=None):
+    async def call_tool():
+        async with Client(url, auth=auth) as client:
+            return await client.call_tool(tool_name, arguments or {})
+
+    result = asyncio.run(call_tool())
+    if result.data is not None:
+        return result.data
+    if result.structured_content:
+        if "result" in result.structured_content:
+            return result.structured_content["result"]
+        return result.structured_content
+    if result.content and hasattr(result.content[0], "text"):
+        text = result.content[0].text
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            return text
+    return result.content
+
+
+def list_mcp_tools(url: str, *, auth=None) -> list:
+    async def fetch():
+        async with Client(url, auth=auth) as client:
+            return await client.list_tools()
+
+    return asyncio.run(fetch())
+
+
+@contextlib.contextmanager
+def port_forward(service: str, local_port: int, remote_port: int = 8000) -> Iterator[str]:
+    process = subprocess.Popen(
+        [
+            "kubectl",
+            "port-forward",
+            f"service/{service}",
+            f"{local_port}:{remote_port}",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        # Give kubectl a moment to bind the local port before tests connect.
+        time.sleep(1)
+        yield f"http://127.0.0.1:{local_port}"
+    finally:
+        process.terminate()
+        try:
+            process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=5)
+
+
+def helm_install_args(
+    release_name: str,
+    fullname_override: str,
+    elasticsearch_hosts: str,
+):
+    return [
+        "helm",
+        "upgrade",
+        "--install",
+        release_name,
+        "helm/elasticsearch-mcp-server",
+        "--namespace",
+        NAMESPACE,
+        "--set",
+        f"fullnameOverride={fullname_override}",
+        "--set",
+        f"image.repository={IMAGE_REPOSITORY}",
+        "--set",
+        f"image.tag={IMAGE_TAG}",
+        "--set",
+        "image.pullPolicy=Never",
+        "--set",
+        "server.engineType=elasticsearch",
+        "--set",
+        "server.transport=streamable-http",
+        "--set",
+        f"elasticsearch.hosts={elasticsearch_hosts}",
+        "--set",
+        "elasticsearch.verifyCerts=false",
+        "--set",
+        "readinessProbe.initialDelaySeconds=2",
+        "--set",
+        "livenessProbe.initialDelaySeconds=2",
+    ]
+
+
+def install_release(args, deployment_name: str):
+    _run(args, timeout=180)
+    _run(
+        [
+            "kubectl",
+            "rollout",
+            "status",
+            f"deployment/{deployment_name}",
+            "--timeout=240s",
+        ],
+        timeout=260,
+    )
+
+
+def uninstall_release(release_name: str):
+    subprocess.run(
+        ["helm", "uninstall", release_name, "--namespace", NAMESPACE],
+        check=False,
+        timeout=120,
+    )
+
+
+@pytest.fixture(scope="session")
+def kind_cluster():
+    missing_tools = [
+        tool
+        for tool in ("docker", "kind", "kubectl", "helm")
+        if not _tool_available(tool)
+    ]
+    if missing_tools:
+        pytest.skip(f"Missing tools for kind e2e: {', '.join(missing_tools)}")
+
+    created_cluster = False
+    if not _kind_cluster_exists(CLUSTER_NAME):
+        _run(["kind", "create", "cluster", "--name", CLUSTER_NAME], timeout=180)
+        created_cluster = True
+
+    try:
+        _run(["kubectl", "cluster-info", "--context", f"kind-{CLUSTER_NAME}"])
+        yield CLUSTER_NAME
+    finally:
+        if created_cluster and os.environ.get("KEEP_KIND_CLUSTER") != "true":
+            _run(["kind", "delete", "cluster", "--name", CLUSTER_NAME], timeout=120)
+
+
+@pytest.fixture(scope="session")
+def loaded_mcp_image(kind_cluster):
+    _run_with_retries(["docker", "build", "-t", IMAGE, "."], timeout=600)
+    _run_with_retries(
+        ["kind", "load", "docker-image", IMAGE, "--name", kind_cluster], timeout=300
+    )
+    return IMAGE
+
+
+def _elasticsearch_manifest(name: str) -> str:
+    return f"""
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {name}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {name}
+  template:
+    metadata:
+      labels:
+        app: {name}
+    spec:
+      containers:
+        - name: elasticsearch
+          image: docker.elastic.co/elasticsearch/elasticsearch:8.17.2
+          ports:
+            - containerPort: 9200
+          env:
+            - name: discovery.type
+              value: single-node
+            - name: xpack.security.enabled
+              value: "false"
+            - name: ES_JAVA_OPTS
+              value: "-Xms512m -Xmx512m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {name}
+spec:
+  selector:
+    app: {name}
+  ports:
+    - name: http
+      port: 9200
+      targetPort: 9200
+"""
+
+
+def deploy_elasticsearch(name: str) -> str:
+    _run(["kubectl", "apply", "-f", "-"], input_text=_elasticsearch_manifest(name), timeout=120)
+    _run(
+        [
+            "kubectl",
+            "rollout",
+            "status",
+            f"deployment/{name}",
+            "--timeout=240s",
+        ],
+        timeout=260,
+    )
+    return f"http://{name}:9200"
+
+
+@pytest.fixture(scope="session")
+def elasticsearch_in_kind(kind_cluster):
+    return deploy_elasticsearch("elasticsearch")
+
+
+@pytest.fixture(scope="session")
+def mcp_server_in_kind(kind_cluster, loaded_mcp_image, elasticsearch_in_kind):
+    install_release(
+        helm_install_args(DEFAULT_RELEASE_NAME, "mcp-e2e", elasticsearch_in_kind),
+        "mcp-e2e",
+    )
+    yield DEFAULT_RELEASE_NAME
+    uninstall_release(DEFAULT_RELEASE_NAME)
+
+
+@pytest.fixture(scope="session")
+def secure_mcp_server_in_kind(kind_cluster, loaded_mcp_image, elasticsearch_in_kind):
+    args = helm_install_args(
+        SECURE_RELEASE_NAME,
+        "mcp-e2e-secure",
+        elasticsearch_in_kind,
+    )
+    args.extend(
+        [
+            "--set",
+            "risk.disableHighRiskOperations=true",
+            "--set",
+            "risk.disabledOperations=delete_index\\,delete_document",
+            "--set",
+            "auth.credentials.mcpApiKey=secret-token",
+        ]
+    )
+
+    install_release(args, "mcp-e2e-secure")
+    yield SECURE_RELEASE_NAME
+    uninstall_release(SECURE_RELEASE_NAME)
+
+
+@pytest.fixture(scope="session")
+def multi_cluster_mcp_server_in_kind(kind_cluster, loaded_mcp_image):
+    primary_hosts = deploy_elasticsearch("elasticsearch-primary")
+    secondary_hosts = deploy_elasticsearch("elasticsearch-secondary")
+    clusters_config = json.dumps(
+        {
+            "primary": {"hosts": [primary_hosts]},
+            "secondary": {"hosts": [secondary_hosts]},
+        }
+    )
+
+    args = helm_install_args(
+        MULTI_CLUSTER_RELEASE_NAME,
+        "mcp-e2e-multi",
+        primary_hosts,
+    )
+    args.extend(
+        [
+            "--set-string",
+            f"extraEnv[0].name=ELASTICSEARCH_CLUSTERS",
+            "--set-string",
+            f"extraEnv[0].value={clusters_config}",
+            "--set-string",
+            "extraEnv[1].name=DEFAULT_CLUSTER",
+            "--set-string",
+            "extraEnv[1].value=primary",
+        ]
+    )
+
+    install_release(args, "mcp-e2e-multi")
+    yield MULTI_CLUSTER_RELEASE_NAME
+    uninstall_release(MULTI_CLUSTER_RELEASE_NAME)
