@@ -1,6 +1,6 @@
 [project]
 name = "elasticsearch-mcp-server"
-version = "2.1.1"
+version = "2.1.2"
 description = "MCP Server for interacting with Elasticsearch and OpenSearch"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -29,18 +29,6 @@ packages = [
     "src",
 ]
 
-[build-system]
-requires = [
-    "hatchling",
-]
-build-backend = "hatchling.build"
-
-[dependency-groups]
-dev = [
-    "pytest>=9.0.3",
-    "testcontainers>=4.14.2",
-]
-
 [tool.pytest.ini_options]
 testpaths = [
     "tests",
@@ -52,4 +40,16 @@ markers = [
     "unit: fast tests that do not require external services",
     "e2e: end-to-end tests that require Docker and Testcontainers",
     "k8s: Kubernetes end-to-end tests that require kind, kubectl, and helm",
+]
+
+[build-system]
+requires = [
+    "hatchling",
+]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+    "testcontainers>=4.14.2",
 ]

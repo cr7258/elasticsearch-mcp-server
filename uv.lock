@@ -390,7 +390,7 @@ wheels = [
 
 [[package]]
 name = "elasticsearch-mcp-server"
-version = "2.1.1"
+version = "2.1.2"
 source = { editable = "." }
 dependencies = [
     { name = "anthropic" },
