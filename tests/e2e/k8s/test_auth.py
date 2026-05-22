@@ -2,7 +2,6 @@ import asyncio
 
 import pytest
 from fastmcp import Client
-from fastmcp.exceptions import ToolError
 
 from tests.e2e.k8s.conftest import (
     list_mcp_tools,
@@ -11,6 +10,12 @@ from tests.e2e.k8s.conftest import (
 )
 
 pytestmark = [pytest.mark.e2e, pytest.mark.k8s]
+
+
+_PORT_OFFSETS = {
+    "elasticsearch": 18040,
+    "opensearch": 18140,
+}
 
 
 def _list_tools_unauthenticated(url: str):
@@ -22,7 +27,8 @@ def _list_tools_unauthenticated(url: str):
 
 
 def test_mcp_endpoint_requires_bearer_token(secure_mcp_server_in_kind):
-    with port_forward("mcp-e2e-secure", 18040) as base_url:
+    engine_type, release = secure_mcp_server_in_kind
+    with port_forward(release, _PORT_OFFSETS[engine_type] + 0) as base_url:
         wait_for_http(
             f"{base_url}/healthz",
             headers={"Authorization": "Bearer secret-token"},
@@ -34,7 +40,8 @@ def test_mcp_endpoint_requires_bearer_token(secure_mcp_server_in_kind):
 
 
 def test_mcp_endpoint_rejects_invalid_bearer_token(secure_mcp_server_in_kind):
-    with port_forward("mcp-e2e-secure", 18041) as base_url:
+    engine_type, release = secure_mcp_server_in_kind
+    with port_forward(release, _PORT_OFFSETS[engine_type] + 1) as base_url:
         wait_for_http(
             f"{base_url}/healthz",
             headers={"Authorization": "Bearer secret-token"},
@@ -46,7 +53,8 @@ def test_mcp_endpoint_rejects_invalid_bearer_token(secure_mcp_server_in_kind):
 
 
 def test_mcp_endpoint_accepts_valid_bearer_token(secure_mcp_server_in_kind):
-    with port_forward("mcp-e2e-secure", 18042) as base_url:
+    engine_type, release = secure_mcp_server_in_kind
+    with port_forward(release, _PORT_OFFSETS[engine_type] + 2) as base_url:
         wait_for_http(
             f"{base_url}/healthz",
             headers={"Authorization": "Bearer secret-token"},

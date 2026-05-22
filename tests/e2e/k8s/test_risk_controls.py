@@ -9,8 +9,15 @@ from tests.e2e.k8s.conftest import (
 pytestmark = [pytest.mark.e2e, pytest.mark.k8s]
 
 
+_PORT_OFFSETS = {
+    "elasticsearch": 18030,
+    "opensearch": 18130,
+}
+
+
 def test_disabled_operations_are_not_listed_through_mcp(secure_mcp_server_in_kind):
-    with port_forward("mcp-e2e-secure", 18030) as base_url:
+    engine_type, release = secure_mcp_server_in_kind
+    with port_forward(release, _PORT_OFFSETS[engine_type]) as base_url:
         wait_for_http(
             f"{base_url}/healthz",
             headers={"Authorization": "Bearer secret-token"},

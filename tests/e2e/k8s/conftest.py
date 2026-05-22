@@ -20,9 +20,18 @@ IMAGE_TAG = os.environ.get("KIND_E2E_IMAGE_TAG", "e2e")
 IMAGE = f"{IMAGE_REPOSITORY}:{IMAGE_TAG}"
 NAMESPACE = "default"
 
-DEFAULT_RELEASE_NAME = "mcp-e2e"
-SECURE_RELEASE_NAME = "mcp-e2e-secure"
-MULTI_CLUSTER_RELEASE_NAME = "mcp-e2e-multi"
+ELASTICSEARCH_IMAGE = "docker.elastic.co/elasticsearch/elasticsearch:8.17.2"
+OPENSEARCH_IMAGE = "opensearchproject/opensearch:2.11.0"
+
+ENGINE_TYPES = ["elasticsearch", "opensearch"]
+
+
+def release_names(engine: str) -> dict:
+    return {
+        "default": f"mcp-e2e-{engine}",
+        "secure": f"mcp-e2e-{engine}-secure",
+        "multi": f"mcp-e2e-{engine}-multi",
+    }
 
 
 def _run(command, input_text=None, timeout=300):
@@ -145,9 +154,10 @@ def port_forward(service: str, local_port: int, remote_port: int = 8000) -> Iter
 def helm_install_args(
     release_name: str,
     fullname_override: str,
-    elasticsearch_hosts: str,
+    engine: str,
+    backend_hosts: str,
 ):
-    return [
+    args = [
         "helm",
         "upgrade",
         "--install",
@@ -164,18 +174,33 @@ def helm_install_args(
         "--set",
         "image.pullPolicy=Never",
         "--set",
-        "server.engineType=elasticsearch",
+        f"server.engineType={engine}",
         "--set",
         "server.transport=streamable-http",
-        "--set",
-        f"elasticsearch.hosts={elasticsearch_hosts}",
-        "--set",
-        "elasticsearch.verifyCerts=false",
         "--set",
         "readinessProbe.initialDelaySeconds=2",
         "--set",
         "livenessProbe.initialDelaySeconds=2",
     ]
+    if engine == "elasticsearch":
+        args.extend(
+            [
+                "--set",
+                f"elasticsearch.hosts={backend_hosts}",
+                "--set",
+                "elasticsearch.verifyCerts=false",
+            ]
+        )
+    else:
+        args.extend(
+            [
+                "--set",
+                f"opensearch.hosts={backend_hosts}",
+                "--set",
+                "opensearch.verifyCerts=false",
+            ]
+        )
+    return args
 
 
 def install_release(args, deployment_name: str):
@@ -232,8 +257,9 @@ def loaded_mcp_image(kind_cluster):
     return IMAGE
 
 
-def _elasticsearch_manifest(name: str) -> str:
-    return f"""
+def _backend_manifest(engine: str, name: str) -> str:
+    if engine == "elasticsearch":
+        return f"""
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -250,7 +276,7 @@ spec:
     spec:
       containers:
         - name: elasticsearch
-          image: docker.elastic.co/elasticsearch/elasticsearch:8.17.2
+          image: {ELASTICSEARCH_IMAGE}
           ports:
             - containerPort: 9200
           env:
@@ -274,9 +300,54 @@ spec:
       targetPort: 9200
 """
 
+    return f"""
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {name}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {name}
+  template:
+    metadata:
+      labels:
+        app: {name}
+    spec:
+      containers:
+        - name: opensearch
+          image: {OPENSEARCH_IMAGE}
+          ports:
+            - containerPort: 9200
+          env:
+            - name: discovery.type
+              value: single-node
+            - name: DISABLE_SECURITY_PLUGIN
+              value: "true"
+            - name: OPENSEARCH_JAVA_OPTS
+              value: "-Xms512m -Xmx512m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {name}
+spec:
+  selector:
+    app: {name}
+  ports:
+    - name: http
+      port: 9200
+      targetPort: 9200
+"""
 
-def deploy_elasticsearch(name: str) -> str:
-    _run(["kubectl", "apply", "-f", "-"], input_text=_elasticsearch_manifest(name), timeout=120)
+
+def deploy_search_backend(engine: str, name: str) -> str:
+    _run(
+        ["kubectl", "apply", "-f", "-"],
+        input_text=_backend_manifest(engine, name),
+        timeout=120,
+    )
     _run(
         [
             "kubectl",
@@ -290,28 +361,34 @@ def deploy_elasticsearch(name: str) -> str:
     return f"http://{name}:9200"
 
 
-@pytest.fixture(scope="session")
-def elasticsearch_in_kind(kind_cluster):
-    return deploy_elasticsearch("elasticsearch")
+@pytest.fixture(scope="session", params=ENGINE_TYPES)
+def engine(request):
+    return request.param
 
 
 @pytest.fixture(scope="session")
-def mcp_server_in_kind(kind_cluster, loaded_mcp_image, elasticsearch_in_kind):
+def search_backend_in_kind(kind_cluster, engine):
+    name = f"{engine}-default"
+    return engine, deploy_search_backend(engine, name)
+
+
+@pytest.fixture(scope="session")
+def mcp_server_in_kind(kind_cluster, loaded_mcp_image, search_backend_in_kind):
+    engine_type, hosts = search_backend_in_kind
+    release = release_names(engine_type)["default"]
     install_release(
-        helm_install_args(DEFAULT_RELEASE_NAME, "mcp-e2e", elasticsearch_in_kind),
-        "mcp-e2e",
+        helm_install_args(release, release, engine_type, hosts),
+        release,
     )
-    yield DEFAULT_RELEASE_NAME
-    uninstall_release(DEFAULT_RELEASE_NAME)
+    yield engine_type, release
+    uninstall_release(release)
 
 
 @pytest.fixture(scope="session")
-def secure_mcp_server_in_kind(kind_cluster, loaded_mcp_image, elasticsearch_in_kind):
-    args = helm_install_args(
-        SECURE_RELEASE_NAME,
-        "mcp-e2e-secure",
-        elasticsearch_in_kind,
-    )
+def secure_mcp_server_in_kind(kind_cluster, loaded_mcp_image, search_backend_in_kind):
+    engine_type, hosts = search_backend_in_kind
+    release = release_names(engine_type)["secure"]
+    args = helm_install_args(release, release, engine_type, hosts)
     args.extend(
         [
             "--set",
@@ -323,31 +400,30 @@ def secure_mcp_server_in_kind(kind_cluster, loaded_mcp_image, elasticsearch_in_k
         ]
     )
 
-    install_release(args, "mcp-e2e-secure")
-    yield SECURE_RELEASE_NAME
-    uninstall_release(SECURE_RELEASE_NAME)
+    install_release(args, release)
+    yield engine_type, release
+    uninstall_release(release)
 
 
 @pytest.fixture(scope="session")
-def multi_cluster_mcp_server_in_kind(kind_cluster, loaded_mcp_image):
-    primary_hosts = deploy_elasticsearch("elasticsearch-primary")
-    secondary_hosts = deploy_elasticsearch("elasticsearch-secondary")
+def multi_cluster_mcp_server_in_kind(kind_cluster, loaded_mcp_image, engine):
+    primary_hosts = deploy_search_backend(engine, f"{engine}-primary")
+    secondary_hosts = deploy_search_backend(engine, f"{engine}-secondary")
+
     clusters_config = json.dumps(
         {
             "primary": {"hosts": [primary_hosts]},
             "secondary": {"hosts": [secondary_hosts]},
         }
     )
+    cluster_env_var = "ELASTICSEARCH_CLUSTERS" if engine == "elasticsearch" else "OPENSEARCH_CLUSTERS"
 
-    args = helm_install_args(
-        MULTI_CLUSTER_RELEASE_NAME,
-        "mcp-e2e-multi",
-        primary_hosts,
-    )
+    release = release_names(engine)["multi"]
+    args = helm_install_args(release, release, engine, primary_hosts)
     args.extend(
         [
             "--set-string",
-            f"extraEnv[0].name=ELASTICSEARCH_CLUSTERS",
+            f"extraEnv[0].name={cluster_env_var}",
             "--set-string",
             f"extraEnv[0].value={clusters_config}",
             "--set-string",
@@ -357,6 +433,6 @@ def multi_cluster_mcp_server_in_kind(kind_cluster, loaded_mcp_image):
         ]
     )
 
-    install_release(args, "mcp-e2e-multi")
-    yield MULTI_CLUSTER_RELEASE_NAME
-    uninstall_release(MULTI_CLUSTER_RELEASE_NAME)
+    install_release(args, release)
+    yield engine, release
+    uninstall_release(release)

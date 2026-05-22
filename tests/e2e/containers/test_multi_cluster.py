@@ -14,42 +14,40 @@ from tests.e2e.containers.conftest import (
 pytestmark = pytest.mark.e2e
 
 
-@pytest.fixture(scope="session")
-def two_elasticsearch_clusters():
+@pytest.fixture(scope="module", params=["elasticsearch", "opensearch"])
+def two_search_clusters(request):
     if not docker_available():
         pytest.skip("Docker is required for e2e tests")
 
-    containers = [
-        search_container("elasticsearch"),
-        search_container("elasticsearch"),
-    ]
+    engine_type = request.param
+    containers = [search_container(engine_type), search_container(engine_type)]
     for container in containers:
         container.start()
 
     try:
         clients = []
         for container in containers:
-            client = search_client_from_container(container, "elasticsearch")
+            client = search_client_from_container(container, engine_type)
             wait_for_search_client(client)
             clients.append(client)
-        yield clients
+        yield engine_type, clients
     finally:
         for container in containers:
             container.stop()
 
 
 def test_cluster_parameter_routes_tool_calls_to_named_search_cluster(
-    two_elasticsearch_clusters,
+    two_search_clusters,
 ):
-    primary_client, secondary_client = two_elasticsearch_clusters
+    engine_type, (primary_client, secondary_client) = two_search_clusters
     manager = SearchClientManager(
         {"primary": primary_client, "secondary": secondary_client},
         default_cluster="primary",
     )
     tools = register_tools(manager)
 
-    primary_index = f"mcp-e2e-primary-{uuid.uuid4().hex[:8]}"
-    secondary_index = f"mcp-e2e-secondary-{uuid.uuid4().hex[:8]}"
+    primary_index = f"mcp-e2e-{engine_type}-primary-{uuid.uuid4().hex[:8]}"
+    secondary_index = f"mcp-e2e-{engine_type}-secondary-{uuid.uuid4().hex[:8]}"
 
     try:
         assert tools["create_index"](index=primary_index, cluster="primary")[
@@ -73,14 +71,14 @@ def test_cluster_parameter_routes_tool_calls_to_named_search_cluster(
             tools["delete_index"](index=secondary_index, cluster="secondary")
 
 
-def test_omitted_cluster_uses_default_search_cluster(two_elasticsearch_clusters):
-    primary_client, secondary_client = two_elasticsearch_clusters
+def test_omitted_cluster_uses_default_search_cluster(two_search_clusters):
+    engine_type, (primary_client, secondary_client) = two_search_clusters
     manager = SearchClientManager(
         {"primary": primary_client, "secondary": secondary_client},
         default_cluster="primary",
     )
     tools = register_tools(manager)
-    index = f"mcp-e2e-default-{uuid.uuid4().hex[:8]}"
+    index = f"mcp-e2e-{engine_type}-default-{uuid.uuid4().hex[:8]}"
 
     try:
         assert tools["create_index"](index=index)["acknowledged"] is True

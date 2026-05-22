@@ -11,15 +11,26 @@ from tests.e2e.k8s.conftest import (
 pytestmark = [pytest.mark.e2e, pytest.mark.k8s]
 
 
+_PORT_OFFSETS = {
+    "elasticsearch": 18010,
+    "opensearch": 18110,
+}
+
+
+def _ports(engine_type: str) -> int:
+    return _PORT_OFFSETS[engine_type]
+
+
 def _mcp_url(base_url: str) -> str:
     return f"{base_url}/mcp"
 
 
 def test_index_tools_round_trip_through_mcp(mcp_server_in_kind):
-    with port_forward("mcp-e2e", 18010) as base_url:
+    engine_type, release = mcp_server_in_kind
+    with port_forward(release, _ports(engine_type) + 0) as base_url:
         wait_for_http(f"{base_url}/healthz")
         mcp_url = _mcp_url(base_url)
-        index = f"mcp-k8s-index-{uuid.uuid4().hex[:8]}"
+        index = f"mcp-k8s-index-{engine_type}-{uuid.uuid4().hex[:8]}"
 
         try:
             create = call_mcp_tool(mcp_url, "create_index", {"index": index})
@@ -35,10 +46,11 @@ def test_index_tools_round_trip_through_mcp(mcp_server_in_kind):
 
 
 def test_document_tools_round_trip_through_mcp(mcp_server_in_kind):
-    with port_forward("mcp-e2e", 18011) as base_url:
+    engine_type, release = mcp_server_in_kind
+    with port_forward(release, _ports(engine_type) + 1) as base_url:
         wait_for_http(f"{base_url}/healthz")
         mcp_url = _mcp_url(base_url)
-        index = f"mcp-k8s-doc-{uuid.uuid4().hex[:8]}"
+        index = f"mcp-k8s-doc-{engine_type}-{uuid.uuid4().hex[:8]}"
 
         try:
             call_mcp_tool(mcp_url, "create_index", {"index": index})
@@ -64,10 +76,11 @@ def test_document_tools_round_trip_through_mcp(mcp_server_in_kind):
 
 
 def test_search_and_delete_by_query_through_mcp(mcp_server_in_kind):
-    with port_forward("mcp-e2e", 18012) as base_url:
+    engine_type, release = mcp_server_in_kind
+    with port_forward(release, _ports(engine_type) + 2) as base_url:
         wait_for_http(f"{base_url}/healthz")
         mcp_url = _mcp_url(base_url)
-        index = f"mcp-k8s-search-{uuid.uuid4().hex[:8]}"
+        index = f"mcp-k8s-search-{engine_type}-{uuid.uuid4().hex[:8]}"
 
         try:
             call_mcp_tool(mcp_url, "create_index", {"index": index})
@@ -111,10 +124,11 @@ def test_search_and_delete_by_query_through_mcp(mcp_server_in_kind):
 
 
 def test_alias_tools_round_trip_through_mcp(mcp_server_in_kind):
-    with port_forward("mcp-e2e", 18013) as base_url:
+    engine_type, release = mcp_server_in_kind
+    with port_forward(release, _ports(engine_type) + 3) as base_url:
         wait_for_http(f"{base_url}/healthz")
         mcp_url = _mcp_url(base_url)
-        index = f"mcp-k8s-alias-{uuid.uuid4().hex[:8]}"
+        index = f"mcp-k8s-alias-{engine_type}-{uuid.uuid4().hex[:8]}"
         alias = f"{index}-alias"
 
         try:
@@ -140,7 +154,8 @@ def test_alias_tools_round_trip_through_mcp(mcp_server_in_kind):
 
 
 def test_cluster_analyzer_and_general_tools_through_mcp(mcp_server_in_kind):
-    with port_forward("mcp-e2e", 18014) as base_url:
+    engine_type, release = mcp_server_in_kind
+    with port_forward(release, _ports(engine_type) + 4) as base_url:
         wait_for_http(f"{base_url}/healthz")
         mcp_url = _mcp_url(base_url)
 
@@ -163,8 +178,17 @@ def test_cluster_analyzer_and_general_tools_through_mcp(mcp_server_in_kind):
         assert tokens == ["hello", "mcp"]
 
 
-def test_data_stream_tools_round_trip_through_mcp(mcp_server_in_kind):
-    with port_forward("mcp-e2e", 18015) as base_url:
+@pytest.fixture
+def _data_stream_test_marker(mcp_server_in_kind):
+    engine_type, _ = mcp_server_in_kind
+    if engine_type != "elasticsearch":
+        pytest.skip("Data streams in this test require an Elasticsearch index template")
+    return mcp_server_in_kind
+
+
+def test_data_stream_tools_round_trip_through_mcp(_data_stream_test_marker):
+    engine_type, release = _data_stream_test_marker
+    with port_forward(release, _ports(engine_type) + 5) as base_url:
         wait_for_http(f"{base_url}/healthz")
         mcp_url = _mcp_url(base_url)
         suffix = uuid.uuid4().hex[:8]

@@ -1,5 +1,6 @@
 import pytest
 
+from src.clients import SearchClient
 from src.clients.base import GeneralRestClient, SearchClientBase
 
 pytestmark = pytest.mark.unit
@@ -100,6 +101,75 @@ def test_general_rest_client_sends_json_request_with_api_key(monkeypatch):
             },
         )
     ]
+
+
+def test_search_client_init_rejects_unsupported_engine_type():
+    with pytest.raises(ValueError, match="Unsupported engine type: solr"):
+        SearchClient(
+            {
+                "hosts": ["http://localhost:9200"],
+                "username": None,
+                "password": None,
+                "api_key": None,
+                "verify_certs": False,
+                "timeout": None,
+            },
+            "solr",
+        )
+
+
+def test_search_client_init_constructs_opensearch_client_with_basic_auth(monkeypatch):
+    captured = {}
+
+    class FakeOpenSearch:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    monkeypatch.setattr("src.clients.base.OpenSearch", FakeOpenSearch)
+
+    SearchClient(
+        {
+            "hosts": ["http://localhost:9200"],
+            "username": "admin",
+            "password": "secret",
+            "api_key": None,
+            "verify_certs": False,
+            "timeout": 7,
+        },
+        "opensearch",
+    )
+
+    assert captured["hosts"] == ["http://localhost:9200"]
+    assert captured["http_auth"] == ("admin", "secret")
+    assert captured["verify_certs"] is False
+    assert captured["timeout"] == 7
+
+
+def test_search_client_init_constructs_opensearch_client_without_auth_when_credentials_missing(
+    monkeypatch,
+):
+    captured = {}
+
+    class FakeOpenSearch:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    monkeypatch.setattr("src.clients.base.OpenSearch", FakeOpenSearch)
+
+    SearchClient(
+        {
+            "hosts": ["http://localhost:9200"],
+            "username": None,
+            "password": None,
+            "api_key": None,
+            "verify_certs": False,
+            "timeout": None,
+        },
+        "opensearch",
+    )
+
+    assert captured["http_auth"] is None
+    assert "timeout" not in captured
 
 
 def test_general_rest_client_returns_text_response_and_uses_basic_auth(monkeypatch):
