@@ -9,7 +9,7 @@ from fastmcp.server.auth import StaticTokenVerifier
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
-from src.clients import create_search_client
+from src.clients import create_search_client_manager
 from src.tools.alias import AliasTools
 from src.tools.analyzer import AnalyzerTools
 from src.tools.cluster import ClusterTools
@@ -58,8 +58,8 @@ class SearchMCPServer:
         # Create MCP server with or without auth
         self.mcp = FastMCP(self.name, auth=auth)
 
-        # Create the corresponding search client
-        self.search_client = create_search_client(self.engine_type)
+        # Create the corresponding search client manager
+        self.search_client = create_search_client_manager(self.engine_type)
 
         # Initialize tools
         self._register_tools()
@@ -99,7 +99,7 @@ class SearchMCPServer:
         async def readiness(request: Request) -> Response:
             try:
                 reachable = await asyncio.wait_for(
-                    asyncio.to_thread(self.search_client.client.ping),
+                    asyncio.to_thread(self.search_client.get_client().client.ping),
                     timeout=5.0,
                 )
             except asyncio.TimeoutError:

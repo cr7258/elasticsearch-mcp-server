@@ -69,8 +69,44 @@ The MCP server supports the following environment variables:
 
 ### Connection Settings
 - `ELASTICSEARCH_HOSTS` / `OPENSEARCH_HOSTS`: Comma-separated list of hosts (default: `https://localhost:9200`)
+- `ELASTICSEARCH_CLUSTERS` / `OPENSEARCH_CLUSTERS`: JSON object for named cluster configurations. When set, tools can target a specific cluster with the optional `cluster` parameter.
+- `DEFAULT_CLUSTER`: Default cluster name to use when `ELASTICSEARCH_CLUSTERS` / `OPENSEARCH_CLUSTERS` is set and a tool call omits `cluster` (defaults to the first configured cluster).
 - `VERIFY_CERTS`: Whether to verify SSL certificates (default: `false`)
 - `REQUEST_TIMEOUT`: Request timeout in seconds (optional, uses client default if not set)
+
+### Multiple Cluster Configuration
+
+By default, the server uses a single Elasticsearch cluster from `ELASTICSEARCH_HOSTS`, `ELASTICSEARCH_USERNAME`, `ELASTICSEARCH_PASSWORD`, and `ELASTICSEARCH_API_KEY`, or a single OpenSearch cluster from `OPENSEARCH_HOSTS`, `OPENSEARCH_USERNAME`, and `OPENSEARCH_PASSWORD`. To configure multiple named clusters, set `ELASTICSEARCH_CLUSTERS` or `OPENSEARCH_CLUSTERS` to a JSON object:
+
+```bash
+export ELASTICSEARCH_CLUSTERS='{
+  "prod": {
+    "hosts": ["https://prod-es:9200"],
+    "api_key": "<PROD_API_KEY>",
+    "verify_certs": true
+  },
+  "staging": {
+    "hosts": ["https://staging-es:9200"],
+    "username": "elastic",
+    "password": "<STAGING_PASSWORD>"
+  }
+}'
+export DEFAULT_CLUSTER="prod"
+```
+
+Every tool accepts an optional `cluster` parameter. If omitted, the server uses `DEFAULT_CLUSTER`.
+
+```json
+{
+  "cluster": "staging",
+  "index": "logs-*",
+  "body": {
+    "query": {
+      "match_all": {}
+    }
+  }
+}
+```
 
 ### MCP Server Authentication (HTTP Transports Only)
 

@@ -34,3 +34,22 @@ requires = [
     "hatchling",
 ]
 build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+    "testcontainers>=4.14.2",
+]
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests",
+]
+pythonpath = [
+    ".",
+]
+markers = [
+    "unit: fast tests that do not require external services",
+    "e2e: end-to-end tests that require Docker and Testcontainers",
+    "k8s: Kubernetes end-to-end tests that require kind, kubectl, and helm",
+]

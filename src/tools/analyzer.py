@@ -2,6 +2,8 @@ from typing import Dict, List, Optional
 
 from fastmcp import FastMCP
 
+from src.tools.utils import get_search_client
+
 
 class AnalyzerTools:
     def __init__(self, search_client):
@@ -18,6 +20,7 @@ class AnalyzerTools:
             char_filter: Optional[List[str]] = None,
             explain: bool = False,
             attributes: Optional[List[str]] = None,
+            cluster: Optional[str] = None,
         ) -> Dict:
             """
             Analyze text to see how it would be tokenized.
@@ -45,13 +48,14 @@ class AnalyzerTools:
                 attributes: List of token attributes to return when explain=True
                            (e.g., ['keyword', 'type']). If not specified, all
                            attributes are returned.
+                cluster: Optional cluster name. Uses the default cluster if omitted.
 
             Returns:
                 Dict containing 'tokens' array. Each token has 'token', 'start_offset',
                 'end_offset', 'type', and 'position' fields. With explain=True,
                 returns detailed 'detail' object showing each filter's effect.
             """
-            return self.search_client.analyze_text(
+            return get_search_client(self.search_client, cluster).analyze_text(
                 text=text,
                 index=index,
                 analyzer=analyzer,
