@@ -22,6 +22,7 @@ class FakeSearchClient:
 def clear_search_client_instances(monkeypatch):
     FakeSearchClient.instances = []
     monkeypatch.delenv("ELASTICSEARCH_CLUSTERS", raising=False)
+    monkeypatch.delenv("ELASTICSEARCH_CLUSTERS_FILE", raising=False)
     monkeypatch.delenv("ELASTICSEARCH_HOSTS", raising=False)
     monkeypatch.delenv("ELASTICSEARCH_API_KEY", raising=False)
     monkeypatch.delenv("ELASTICSEARCH_USERNAME", raising=False)
@@ -165,6 +166,72 @@ def test_falls_back_to_single_cluster_environment_config(monkeypatch):
         "verify_certs": True,
         "timeout": 3.5,
     }
+
+
+def test_loads_clusters_from_clusters_file_env_var(tmp_path, monkeypatch):
+    from src.clients import create_search_client_manager
+
+    clusters_path = tmp_path / "clusters.json"
+    clusters_path.write_text(
+        json.dumps(
+            {
+                "prod": {
+                    "hosts": ["https://prod.example.com:9200"],
+                    "api_key": "prod-key",
+                },
+                "staging": {
+                    "hosts": ["https://staging.example.com:9200"],
+                    "username": "elastic",
+                    "password": "secret",
+                },
+            }
+        )
+    )
+    monkeypatch.setenv("ELASTICSEARCH_CLUSTERS_FILE", str(clusters_path))
+    monkeypatch.setenv("DEFAULT_CLUSTER", "staging")
+    monkeypatch.setattr("src.clients.load_dotenv", lambda: None)
+    monkeypatch.setattr("src.clients.SearchClient", FakeSearchClient)
+
+    manager = create_search_client_manager("elasticsearch")
+
+    assert manager.list_clusters() == ["prod", "staging"]
+    assert manager.default_cluster == "staging"
+    assert FakeSearchClient.instances[0].config["api_key"] == "prod-key"
+    assert FakeSearchClient.instances[1].config["username"] == "elastic"
+
+
+def test_clusters_file_takes_precedence_over_inline_clusters_env(tmp_path, monkeypatch):
+    from src.clients import create_search_client_manager
+
+    clusters_path = tmp_path / "clusters.json"
+    clusters_path.write_text(
+        json.dumps({"from_file": {"hosts": ["https://from-file.example.com:9200"]}})
+    )
+    monkeypatch.setenv("ELASTICSEARCH_CLUSTERS_FILE", str(clusters_path))
+    monkeypatch.setenv(
+        "ELASTICSEARCH_CLUSTERS",
+        json.dumps({"from_env": {"hosts": ["https://from-env.example.com:9200"]}}),
+    )
+    monkeypatch.setattr("src.clients.load_dotenv", lambda: None)
+    monkeypatch.setattr("src.clients.SearchClient", FakeSearchClient)
+
+    manager = create_search_client_manager("elasticsearch")
+
+    assert manager.list_clusters() == ["from_file"]
+
+
+def test_clusters_file_must_contain_json_object(tmp_path, monkeypatch):
+    from src.clients import create_search_client_manager
+
+    clusters_path = tmp_path / "clusters.json"
+    clusters_path.write_text(json.dumps(["prod"]))
+    monkeypatch.setenv("ELASTICSEARCH_CLUSTERS_FILE", str(clusters_path))
+    monkeypatch.setattr("src.clients.load_dotenv", lambda: None)
+
+    with pytest.raises(
+        ValueError, match="ELASTICSEARCH_CLUSTERS_FILE must contain a JSON object"
+    ):
+        create_search_client_manager("elasticsearch")
 
 
 def test_unknown_cluster_raises_clear_error(monkeypatch):

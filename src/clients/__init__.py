@@ -103,24 +103,51 @@ def create_search_client(engine_type: str) -> SearchClient:
     return create_search_client_manager(engine_type).get_client()
 
 
-def create_search_client_manager(engine_type: str) -> SearchClientManager:
-    """
-    Create a search client manager for the specified engine type.
+def _load_clusters_config(engine_type: str) -> Optional[Dict]:
+    """Return the parsed clusters config, or ``None`` if no multi-cluster
+    environment variable is set.
 
-    Supports a multi-cluster JSON environment variable named
-    ELASTICSEARCH_CLUSTERS or OPENSEARCH_CLUSTERS. When omitted, this falls
-    back to the existing single-cluster environment variables.
+    Precedence:
+        1. ``<ENGINE>_CLUSTERS_FILE`` — path to a JSON file with the clusters
+           object. Easier to read because it avoids JSON-in-JSON escaping
+           inside an MCP configuration file.
+        2. ``<ENGINE>_CLUSTERS`` — inline JSON object.
     """
-    load_dotenv()
-
     prefix = engine_type.upper()
-    clusters_str = os.environ.get(f"{prefix}_CLUSTERS")
+    clusters_file = os.environ.get(f"{prefix}_CLUSTERS_FILE")
+    if clusters_file:
+        with open(clusters_file, "r") as handle:
+            clusters_config = json.load(handle)
+        if not isinstance(clusters_config, dict):
+            raise ValueError(
+                f"{prefix}_CLUSTERS_FILE must contain a JSON object"
+            )
+        return clusters_config
 
+    clusters_str = os.environ.get(f"{prefix}_CLUSTERS")
     if clusters_str:
         clusters_config = json.loads(clusters_str)
         if not isinstance(clusters_config, dict):
             raise ValueError(f"{prefix}_CLUSTERS must be a JSON object")
+        return clusters_config
 
+    return None
+
+
+def create_search_client_manager(engine_type: str) -> SearchClientManager:
+    """
+    Create a search client manager for the specified engine type.
+
+    Supports a multi-cluster JSON file (``ELASTICSEARCH_CLUSTERS_FILE`` /
+    ``OPENSEARCH_CLUSTERS_FILE``) or inline JSON env var
+    (``ELASTICSEARCH_CLUSTERS`` / ``OPENSEARCH_CLUSTERS``). When neither is
+    set, falls back to the existing single-cluster environment variables.
+    """
+    load_dotenv()
+
+    clusters_config = _load_clusters_config(engine_type)
+
+    if clusters_config is not None:
         clients = {
             cluster_name: SearchClient(
                 _build_config(cluster_config or {}, engine_type), engine_type
@@ -130,6 +157,7 @@ def create_search_client_manager(engine_type: str) -> SearchClientManager:
         default_cluster = os.environ.get("DEFAULT_CLUSTER") or next(iter(clients), "default")
         return SearchClientManager(clients, default_cluster=default_cluster)
 
+    prefix = engine_type.upper()
     config = _build_config(
         {"hosts": os.environ.get(f"{prefix}_HOSTS", "https://localhost:9200")},
         engine_type,
