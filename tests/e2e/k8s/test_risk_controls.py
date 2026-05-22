@@ -1,30 +1,18 @@
 import pytest
 
-from tests.e2e.k8s.conftest import (
-    list_mcp_tools,
-    port_forward,
-    wait_for_http,
-)
+from tests.e2e.k8s.conftest import list_mcp_tools, mcp_endpoint
 
 pytestmark = [pytest.mark.e2e, pytest.mark.k8s]
 
-
-_PORT_OFFSETS = {
-    "elasticsearch": 18030,
-    "opensearch": 18130,
-}
+API_KEY = "secret-token"
+BEARER_HEADER = {"Authorization": f"Bearer {API_KEY}"}
 
 
 def test_disabled_operations_are_not_listed_through_mcp(secure_mcp_server_in_kind):
-    engine_type, release = secure_mcp_server_in_kind
-    with port_forward(release, _PORT_OFFSETS[engine_type]) as base_url:
-        wait_for_http(
-            f"{base_url}/healthz",
-            headers={"Authorization": "Bearer secret-token"},
-        )
-        mcp_url = f"{base_url}/mcp"
+    _, release = secure_mcp_server_in_kind
 
-        tools = list_mcp_tools(mcp_url, auth="secret-token")
+    with mcp_endpoint(release, auth_header=BEARER_HEADER) as mcp_url:
+        tools = list_mcp_tools(mcp_url, auth=API_KEY)
         names = {tool.name for tool in tools}
 
         assert "delete_index" not in names

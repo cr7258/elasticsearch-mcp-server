@@ -2,36 +2,16 @@ import uuid
 
 import pytest
 
-from tests.e2e.k8s.conftest import (
-    call_mcp_tool,
-    port_forward,
-    wait_for_http,
-)
+from tests.e2e.k8s.conftest import call_mcp_tool, mcp_endpoint
 
 pytestmark = [pytest.mark.e2e, pytest.mark.k8s]
 
 
-_PORT_OFFSETS = {
-    "elasticsearch": 18010,
-    "opensearch": 18110,
-}
-
-
-def _ports(engine_type: str) -> int:
-    return _PORT_OFFSETS[engine_type]
-
-
-def _mcp_url(base_url: str) -> str:
-    return f"{base_url}/mcp"
-
-
 def test_index_tools_round_trip_through_mcp(mcp_server_in_kind):
     engine_type, release = mcp_server_in_kind
-    with port_forward(release, _ports(engine_type) + 0) as base_url:
-        wait_for_http(f"{base_url}/healthz")
-        mcp_url = _mcp_url(base_url)
-        index = f"mcp-k8s-index-{engine_type}-{uuid.uuid4().hex[:8]}"
+    index = f"mcp-k8s-index-{engine_type}-{uuid.uuid4().hex[:8]}"
 
+    with mcp_endpoint(release) as mcp_url:
         try:
             create = call_mcp_tool(mcp_url, "create_index", {"index": index})
             assert create["acknowledged"] is True
@@ -47,11 +27,9 @@ def test_index_tools_round_trip_through_mcp(mcp_server_in_kind):
 
 def test_document_tools_round_trip_through_mcp(mcp_server_in_kind):
     engine_type, release = mcp_server_in_kind
-    with port_forward(release, _ports(engine_type) + 1) as base_url:
-        wait_for_http(f"{base_url}/healthz")
-        mcp_url = _mcp_url(base_url)
-        index = f"mcp-k8s-doc-{engine_type}-{uuid.uuid4().hex[:8]}"
+    index = f"mcp-k8s-doc-{engine_type}-{uuid.uuid4().hex[:8]}"
 
+    with mcp_endpoint(release) as mcp_url:
         try:
             call_mcp_tool(mcp_url, "create_index", {"index": index})
 
@@ -77,11 +55,9 @@ def test_document_tools_round_trip_through_mcp(mcp_server_in_kind):
 
 def test_search_and_delete_by_query_through_mcp(mcp_server_in_kind):
     engine_type, release = mcp_server_in_kind
-    with port_forward(release, _ports(engine_type) + 2) as base_url:
-        wait_for_http(f"{base_url}/healthz")
-        mcp_url = _mcp_url(base_url)
-        index = f"mcp-k8s-search-{engine_type}-{uuid.uuid4().hex[:8]}"
+    index = f"mcp-k8s-search-{engine_type}-{uuid.uuid4().hex[:8]}"
 
+    with mcp_endpoint(release) as mcp_url:
         try:
             call_mcp_tool(mcp_url, "create_index", {"index": index})
             for doc_id, category in [("a", "cleanup"), ("b", "keep")]:
@@ -125,12 +101,10 @@ def test_search_and_delete_by_query_through_mcp(mcp_server_in_kind):
 
 def test_alias_tools_round_trip_through_mcp(mcp_server_in_kind):
     engine_type, release = mcp_server_in_kind
-    with port_forward(release, _ports(engine_type) + 3) as base_url:
-        wait_for_http(f"{base_url}/healthz")
-        mcp_url = _mcp_url(base_url)
-        index = f"mcp-k8s-alias-{engine_type}-{uuid.uuid4().hex[:8]}"
-        alias = f"{index}-alias"
+    index = f"mcp-k8s-alias-{engine_type}-{uuid.uuid4().hex[:8]}"
+    alias = f"{index}-alias"
 
+    with mcp_endpoint(release) as mcp_url:
         try:
             call_mcp_tool(mcp_url, "create_index", {"index": index})
 
@@ -154,11 +128,9 @@ def test_alias_tools_round_trip_through_mcp(mcp_server_in_kind):
 
 
 def test_cluster_analyzer_and_general_tools_through_mcp(mcp_server_in_kind):
-    engine_type, release = mcp_server_in_kind
-    with port_forward(release, _ports(engine_type) + 4) as base_url:
-        wait_for_http(f"{base_url}/healthz")
-        mcp_url = _mcp_url(base_url)
+    _, release = mcp_server_in_kind
 
+    with mcp_endpoint(release) as mcp_url:
         health = call_mcp_tool(mcp_url, "get_cluster_health")
         assert health["status"] in {"green", "yellow"}
 
@@ -187,16 +159,14 @@ def _data_stream_test_marker(mcp_server_in_kind):
 
 
 def test_data_stream_tools_round_trip_through_mcp(_data_stream_test_marker):
-    engine_type, release = _data_stream_test_marker
-    with port_forward(release, _ports(engine_type) + 5) as base_url:
-        wait_for_http(f"{base_url}/healthz")
-        mcp_url = _mcp_url(base_url)
-        suffix = uuid.uuid4().hex[:8]
-        template = f"mcp-k8s-template-{suffix}"
-        stream = f"mcp-k8s-stream-{suffix}"
-        template_created = False
-        stream_created = False
+    _, release = _data_stream_test_marker
+    suffix = uuid.uuid4().hex[:8]
+    template = f"mcp-k8s-template-{suffix}"
+    stream = f"mcp-k8s-stream-{suffix}"
+    template_created = False
+    stream_created = False
 
+    with mcp_endpoint(release) as mcp_url:
         try:
             call_mcp_tool(
                 mcp_url,

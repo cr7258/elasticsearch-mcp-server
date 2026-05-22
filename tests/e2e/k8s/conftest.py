@@ -125,8 +125,27 @@ def list_mcp_tools(url: str, *, auth=None) -> list:
     return asyncio.run(fetch())
 
 
+def _free_port() -> int:
+    import socket as _socket
+
+    with _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return sock.getsockname()[1]
+
+
 @contextlib.contextmanager
-def port_forward(service: str, local_port: int, remote_port: int = 8000) -> Iterator[str]:
+def port_forward(
+    service: str, local_port: int | None = None, remote_port: int = 8000
+) -> Iterator[str]:
+    """Start a ``kubectl port-forward`` and yield the local base URL.
+
+    If ``local_port`` is not given, a free port is allocated automatically so
+    callers do not need to manage port number bookkeeping themselves.
+    """
+
+    if local_port is None:
+        local_port = _free_port()
+
     process = subprocess.Popen(
         [
             "kubectl",
@@ -149,6 +168,23 @@ def port_forward(service: str, local_port: int, remote_port: int = 8000) -> Iter
         except subprocess.TimeoutExpired:
             process.kill()
             process.wait(timeout=5)
+
+
+@contextlib.contextmanager
+def mcp_endpoint(
+    release: str,
+    *,
+    auth_header: dict | None = None,
+) -> Iterator[str]:
+    """Open a port-forward to the MCP server release and yield its ``/mcp`` URL.
+
+    Waits for ``/healthz`` to respond before yielding so callers do not need to
+    poll readiness themselves.
+    """
+
+    with port_forward(release) as base_url:
+        wait_for_http(f"{base_url}/healthz", headers=auth_header)
+        yield f"{base_url}/mcp"
 
 
 def helm_install_args(
@@ -406,7 +442,7 @@ def secure_mcp_server_in_kind(kind_cluster, loaded_mcp_image, search_backend_in_
 
 
 @pytest.fixture(scope="session")
-def multi_cluster_mcp_server_in_kind(kind_cluster, loaded_mcp_image, engine):
+def multi_cluster_mcp_server_in_kind(kind_cluster, loaded_mcp_image, engine, tmp_path_factory):
     primary_hosts = deploy_search_backend(engine, f"{engine}-primary")
     secondary_hosts = deploy_search_backend(engine, f"{engine}-secondary")
 
@@ -416,22 +452,26 @@ def multi_cluster_mcp_server_in_kind(kind_cluster, loaded_mcp_image, engine):
             "secondary": {"hosts": [secondary_hosts]},
         }
     )
-    cluster_env_var = "ELASTICSEARCH_CLUSTERS" if engine == "elasticsearch" else "OPENSEARCH_CLUSTERS"
+    cluster_env_var = (
+        "ELASTICSEARCH_CLUSTERS" if engine == "elasticsearch" else "OPENSEARCH_CLUSTERS"
+    )
+
+    # Helm's --set / --set-string parsers treat commas as list separators,
+    # which mangles JSON values like ELASTICSEARCH_CLUSTERS. Drop the cluster
+    # config into a values file (JSON is valid YAML) so commas survive.
+    values_payload = {
+        "extraEnv": [
+            {"name": cluster_env_var, "value": clusters_config},
+            {"name": "DEFAULT_CLUSTER", "value": "primary"},
+        ]
+    }
+    values_dir = tmp_path_factory.mktemp(f"helm-values-{engine}")
+    values_path = values_dir / "extra-env.json"
+    values_path.write_text(json.dumps(values_payload))
 
     release = release_names(engine)["multi"]
     args = helm_install_args(release, release, engine, primary_hosts)
-    args.extend(
-        [
-            "--set-string",
-            f"extraEnv[0].name={cluster_env_var}",
-            "--set-string",
-            f"extraEnv[0].value={clusters_config}",
-            "--set-string",
-            "extraEnv[1].name=DEFAULT_CLUSTER",
-            "--set-string",
-            "extraEnv[1].value=primary",
-        ]
-    )
+    args.extend(["--values", str(values_path)])
 
     install_release(args, release)
     yield engine, release

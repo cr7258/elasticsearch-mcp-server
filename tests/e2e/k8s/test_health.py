@@ -7,7 +7,7 @@ pytestmark = [pytest.mark.e2e, pytest.mark.k8s]
 
 def test_helm_deployment_serves_health_and_readiness(mcp_server_in_kind):
     engine_type, release = mcp_server_in_kind
-    with port_forward(release, 18000) as base_url:
+    with port_forward(release) as base_url:
         health = wait_for_http(f"{base_url}/healthz")
         assert health["status"] == 200
         assert '"status":"ok"' in health["body"]
