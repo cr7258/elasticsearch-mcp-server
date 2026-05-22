@@ -69,8 +69,82 @@ The MCP server supports the following environment variables:
 
 ### Connection Settings
 - `ELASTICSEARCH_HOSTS` / `OPENSEARCH_HOSTS`: Comma-separated list of hosts (default: `https://localhost:9200`)
+- `ELASTICSEARCH_CLUSTERS` / `OPENSEARCH_CLUSTERS`: Inline JSON object for named cluster configurations. When set, tools can target a specific cluster with the optional `cluster` parameter.
+- `ELASTICSEARCH_CLUSTERS_FILE` / `OPENSEARCH_CLUSTERS_FILE`: Path to a JSON file with the clusters object. Recommended when the configuration is embedded inside another JSON file (e.g. the MCP client config) because it avoids JSON-in-JSON escaping. Takes precedence over the inline variable when both are set.
+- `DEFAULT_CLUSTER`: Default cluster name to use when multi-cluster configuration is set and a tool call omits `cluster` (defaults to the first configured cluster).
 - `VERIFY_CERTS`: Whether to verify SSL certificates (default: `false`)
 - `REQUEST_TIMEOUT`: Request timeout in seconds (optional, uses client default if not set)
+
+### Multiple Cluster Configuration
+
+By default, the server uses a single Elasticsearch cluster from `ELASTICSEARCH_HOSTS`, `ELASTICSEARCH_USERNAME`, `ELASTICSEARCH_PASSWORD`, and `ELASTICSEARCH_API_KEY`, or a single OpenSearch cluster from `OPENSEARCH_HOSTS`, `OPENSEARCH_USERNAME`, and `OPENSEARCH_PASSWORD`. To configure multiple named clusters, set `ELASTICSEARCH_CLUSTERS` (or `OPENSEARCH_CLUSTERS`) to a JSON object inside the MCP server configuration. Because the value is a JSON string embedded in another JSON file, the inner quotes need to be escaped:
+
+```json
+{
+  "mcpServers": {
+    "elasticsearch-mcp-server": {
+      "command": "uvx",
+      "args": [
+        "elasticsearch-mcp-server"
+      ],
+      "env": {
+        "ELASTICSEARCH_CLUSTERS": "{\"prod\": {\"hosts\": [\"https://prod-es:9200\"], \"api_key\": \"<PROD_API_KEY>\", \"verify_certs\": true}, \"staging\": {\"hosts\": [\"https://staging-es:9200\"], \"username\": \"elastic\", \"password\": \"<STAGING_PASSWORD>\"}}",
+        "DEFAULT_CLUSTER": "prod"
+      }
+    }
+  }
+}
+```
+
+For better readability, point `ELASTICSEARCH_CLUSTERS_FILE` (or `OPENSEARCH_CLUSTERS_FILE`) at a standalone JSON file instead. The value is just a path so it avoids the JSON-in-JSON escaping:
+
+```json
+{
+  "mcpServers": {
+    "elasticsearch-mcp-server": {
+      "command": "uvx",
+      "args": [
+        "elasticsearch-mcp-server"
+      ],
+      "env": {
+        "ELASTICSEARCH_CLUSTERS_FILE": "/etc/mcp/es-clusters.json",
+        "DEFAULT_CLUSTER": "prod"
+      }
+    }
+  }
+}
+```
+
+`/etc/mcp/es-clusters.json`:
+
+```json
+{
+  "prod": {
+    "hosts": ["https://prod-es:9200"],
+    "api_key": "<PROD_API_KEY>",
+    "verify_certs": true
+  },
+  "staging": {
+    "hosts": ["https://staging-es:9200"],
+    "username": "elastic",
+    "password": "<STAGING_PASSWORD>"
+  }
+}
+```
+
+Every tool accepts an optional `cluster` parameter. If omitted, the server uses `DEFAULT_CLUSTER`. When `DEFAULT_CLUSTER` is not set, the first cluster in the JSON object is used as the default. A tool call targeting a specific cluster looks like:
+
+```json
+{
+  "cluster": "staging",
+  "index": "logs-*",
+  "body": {
+    "query": {
+      "match_all": {}
+    }
+  }
+}
+```
 
 ### MCP Server Authentication (HTTP Transports Only)
 
