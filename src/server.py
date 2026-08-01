@@ -157,7 +157,11 @@ def run_search_server(engine_type, transport, host, port, path):
         api_key = os.environ.get("MCP_API_KEY")
         if not api_key:
             logging.warning(
-                "MCP_API_KEY not set. Server will be accessible without authentication!"
+                "Server is listening on %s:%s without authentication. "
+                "We recommend setting the MCP_API_KEY "
+                "environment variable to enable Bearer token authentication.",
+                host,
+                port,
             )
 
     server = SearchMCPServer(engine_type=engine_type, api_key=api_key)

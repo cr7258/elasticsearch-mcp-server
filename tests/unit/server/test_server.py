@@ -1,4 +1,5 @@
 import sys
+from unittest.mock import Mock
 
 import pytest
 
@@ -81,6 +82,24 @@ def test_run_search_server_passes_mcp_api_key_for_http_transport(monkeypatch):
                 "path": "/mcp",
             },
         }
+    ]
+
+
+@pytest.mark.parametrize("host", ["0.0.0.0", "127.0.0.1"])
+def test_run_search_server_warns_for_unauthenticated_http_transport(
+    monkeypatch, caplog, host
+):
+    fake_server = Mock()
+    fake_server.name = "fake-server"
+    monkeypatch.delenv("MCP_API_KEY", raising=False)
+    monkeypatch.setattr(server, "SearchMCPServer", Mock(return_value=fake_server))
+
+    server.run_search_server("elasticsearch", "streamable-http", host, 8000, "/mcp")
+
+    assert caplog.messages == [
+        f"Server is listening on {host}:8000 without authentication. "
+        "We recommend setting the MCP_API_KEY "
+        "environment variable to enable Bearer token authentication."
     ]
 
 
