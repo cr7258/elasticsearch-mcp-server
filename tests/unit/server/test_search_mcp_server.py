@@ -48,10 +48,15 @@ def test_search_mcp_server_creates_static_token_verifier_when_api_key_is_provide
     }
 
 
-def test_search_mcp_server_disables_auth_when_no_api_key(stub_dependencies):
+def test_search_mcp_server_warns_when_no_api_key(stub_dependencies, caplog):
     server = SearchMCPServer(engine_type="elasticsearch", api_key=None)
 
     assert server.mcp.auth is None
+    assert caplog.messages == [
+        "MCP_API_KEY not set - authentication is DISABLED. Anyone can access this "
+        "MCP server without authentication. Set MCP_API_KEY environment variable "
+        "to enable authentication."
+    ]
 
 
 def test_search_mcp_server_uses_search_client_manager_from_factory(stub_dependencies):
