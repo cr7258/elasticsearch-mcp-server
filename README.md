@@ -1,5 +1,7 @@
 # Elasticsearch/OpenSearch MCP Server
 
+[![MCP Toplist](https://mcptoplist.com/badge/io.github.cr7258%2Felasticsearch-mcp-server.svg)](https://mcptoplist.com/server/io.github.cr7258%2Felasticsearch-mcp-server)
+
 [![MseeP.ai Security Assessment Badge](https://mseep.net/pr/cr7258-elasticsearch-mcp-server-badge.png)](https://mseep.ai/app/cr7258-elasticsearch-mcp-server)
 
 [![Trust Score](https://archestra.ai/mcp-catalog/api/badge/quality/cr7258/elasticsearch-mcp-server)](https://archestra.ai/mcp-catalog/cr7258__elasticsearch-mcp-server)
