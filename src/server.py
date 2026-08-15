@@ -10,6 +10,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from src.clients import create_search_client_manager
+from src.response_format import GcfResponseMiddleware, gcf_encoding_enabled
 from src.tools.alias import AliasTools
 from src.tools.analyzer import AnalyzerTools
 from src.tools.cluster import ClusterTools
@@ -57,6 +58,13 @@ class SearchMCPServer:
             )
         # Create MCP server with or without auth
         self.mcp = FastMCP(self.name, auth=auth)
+
+        # Optional GCF response encoding (opt-in via RESPONSE_FORMAT=gcf). Re-encodes
+        # tool-result JSON as GCF in the model-facing content block while preserving
+        # structuredContent; fail-safe, so it never drops a tool result.
+        if gcf_encoding_enabled():
+            self.mcp.add_middleware(GcfResponseMiddleware())
+            self.logger.info("GCF response encoding enabled (RESPONSE_FORMAT=gcf)")
 
         # Create the corresponding search client manager
         self.search_client = create_search_client_manager(self.engine_type)

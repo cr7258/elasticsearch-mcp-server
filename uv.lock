@@ -368,6 +368,7 @@ source = { editable = "." }
 dependencies = [
     { name = "elasticsearch" },
     { name = "fastmcp" },
+    { name = "gcf-python" },
     { name = "mcp" },
     { name = "opensearch-py" },
     { name = "pydantic" },
@@ -387,6 +388,7 @@ dev = [
 requires-dist = [
     { name = "elasticsearch", specifier = "==8.17.2" },
     { name = "fastmcp", specifier = "==2.13.0" },
+    { name = "gcf-python", specifier = "==2.6.0" },
     { name = "mcp", specifier = ">=1.17.0,<2.0.0" },
     { name = "opensearch-py", specifier = "==2.8.0" },
     { name = "pydantic", specifier = ">=2.11.0,<2.12.0" },
@@ -455,6 +457,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/bc/3b/c30af894db2c3ec439d0e4168ba7ce705474cabdd0a599033ad9a19ad977/fastmcp-2.13.0.tar.gz", hash = "sha256:57f7b7503363e1babc0d1a13af18252b80366a409e1de85f1256cce66a4bee35", size = 7767346, upload-time = "2025-10-25T12:54:10.957Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c0/7f/09942135f506953fc61bb81b9e5eaf50a8eea923b83d9135bd959168ef2d/fastmcp-2.13.0-py3-none-any.whl", hash = "sha256:bdff1399d3b7ebb79286edfd43eb660182432514a5ab8e4cbfb45f1d841d2aa0", size = 367134, upload-time = "2025-10-25T12:54:09.284Z" },
+]
+
+[[package]]
+name = "gcf-python"
+version = "2.6.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/04/02/f802cae78b5c42491a55a749ffa705567f143398f1365d024cecd878312b/gcf_python-2.6.0.tar.gz", hash = "sha256:ff233540fdcb982ccff6f60b9567e4883e3e7b8d09f5ee276cc96e3c341c8c88", size = 1251125, upload-time = "2026-08-15T04:51:56.366Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7f/fa/ca57bb95647a66e0d3f2cdc59f11a5e7164860030fb3b3f2015a1b3f5137/gcf_python-2.6.0-py3-none-any.whl", hash = "sha256:a2c7c8863698b0ce6704f98e394b0e0c4ea71ed244e8d1ad77f294fd16204462", size = 48446, upload-time = "2026-08-15T04:51:54.975Z" },
 ]
 
 [[package]]
