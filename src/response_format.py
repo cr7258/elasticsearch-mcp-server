@@ -75,16 +75,19 @@ class GcfResponseMiddleware(Middleware):
     def _json_payload(result: ToolResult) -> Any | None:
         """The JSON value to encode, or None if the result is not a single JSON body.
 
-        Prefers ``structured_content`` (the tool's typed value); otherwise re-encodes
-        only when the content is exactly one JSON text block.
+        Only a result whose content is exactly one text block is re-encoded, so
+        replacing that block with a single GCF block can never drop an image or
+        other non-text block that was sent alongside it. ``structured_content``
+        (the tool's typed value) is preferred as the payload; otherwise the text
+        block is parsed as JSON.
         """
+        if len(result.content) != 1 or not isinstance(result.content[0], TextContent):
+            return None
+
         if result.structured_content is not None:
             return result.structured_content
 
-        texts = [b.text for b in result.content if isinstance(b, TextContent)]
-        if len(texts) != 1:
-            return None
         try:
-            return json.loads(texts[0])
+            return json.loads(result.content[0].text)
         except (json.JSONDecodeError, ValueError):
             return None

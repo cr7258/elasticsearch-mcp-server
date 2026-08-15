@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 from fastmcp.tools.tool import ToolResult
-from mcp.types import TextContent
+from mcp.types import ImageContent, TextContent
 
 from src.response_format import GcfResponseMiddleware, gcf_encoding_enabled
 
@@ -67,6 +67,22 @@ def test_non_json_content_is_unchanged():
     )
     out = _run(result)
     assert out.content[0].text == "plain non-JSON message"
+
+
+def test_mixed_content_is_left_unchanged():
+    # A single JSON text block alongside another block type (e.g. an image) must
+    # not be GCF-encoded, since replacing the content with one GCF block would
+    # drop the image. The whole result is returned untouched.
+    data = [{"a": 1}, {"a": 2}]
+    image = ImageContent(type="image", data="aGVsbG8=", mimeType="image/png")
+    result = ToolResult(
+        content=[TextContent(type="text", text=json.dumps(data)), image],
+        structured_content=None,
+    )
+    out = _run(result)
+    assert out.content[0].text == json.dumps(data)
+    assert out.content[1] == image
+    assert len(out.content) == 2
 
 
 def test_gcf_encoding_enabled_reads_env(monkeypatch):
