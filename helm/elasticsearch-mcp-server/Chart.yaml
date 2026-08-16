@@ -2,8 +2,8 @@ apiVersion: v2
 name: elasticsearch-mcp-server
 description: MCP Server for interacting with Elasticsearch and OpenSearch clusters
 type: application
-version: 2.1.2
-appVersion: "2.1.2"
+version: 2.1.3
+appVersion: "2.1.3"
 keywords:
   - elasticsearch
   - opensearch
