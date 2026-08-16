@@ -201,6 +201,18 @@ export DISABLE_HIGH_RISK_OPERATIONS=true
 export DISABLE_OPERATIONS="delete_index,delete_document,delete_by_query"
 ```
 
+### GCF Response Encoding (optional)
+
+Opt in to serialize tool-result payloads as [GCF](https://gcformat.com/) (Graph Compact Format), a token-optimized wire format, in the content block the model reads. Elasticsearch returns large, uniform record sets (search hits, aggregation buckets, mappings), the shape GCF compacts best: on representative responses it is **~39% fewer tokens than compact JSON** (40% on search hits), losslessly.
+
+```bash
+export RESPONSE_FORMAT=gcf
+```
+
+`structuredContent` is preserved unchanged, so a tool's declared output schema still validates and any non-model client keeps receiving JSON; only the model-facing text block is re-encoded. Encoding is fail-safe: any error, including a value outside GCF's canonical `int64` numeric domain (which GCF rejects rather than silently approximating), leaves the original JSON result untouched, so a tool call is never dropped over encoding. Default behavior is unchanged when `RESPONSE_FORMAT` is unset.
+
+Reproduce the token comparison: `uv run --with tiktoken python benchmarks/gcf_benchmark.py`.
+
 ## Start Elasticsearch/OpenSearch Cluster
 
 Start the Elasticsearch/OpenSearch cluster using Docker Compose:
