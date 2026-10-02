@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------------
 # Builder: install dependencies into a virtual environment using uv
 # ---------------------------------------------------------------------------
-FROM ghcr.io/astral-sh/uv:python3.10-bookworm-slim AS builder
+FROM ghcr.io/astral-sh/uv:python3.10-trixie-slim AS builder
 
 WORKDIR /app
 
@@ -26,9 +26,16 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # ---------------------------------------------------------------------------
 # Runtime: minimal image without uv
 # ---------------------------------------------------------------------------
-FROM python:3.10-slim-bookworm
+FROM python:3.10-slim-trixie
 
 WORKDIR /app
+
+# Pull in Debian security updates and drop the base image's pip/setuptools/wheel,
+# which the app never uses (it runs from its own venv) but which carry CVEs
+RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/* \
+    && python -m pip uninstall -y pip setuptools wheel
 
 RUN groupadd -r appuser && useradd --no-log-init -r -g appuser -u 1000 appuser
 
