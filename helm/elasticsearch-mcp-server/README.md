@@ -94,7 +94,7 @@ When `auth.existingSecret` is set, no Secret is created by the chart.
 | Parameter | Description | Default |
 |---|---|---|
 | `image.repository` | Docker image repository | `ghcr.io/cr7258/elasticsearch-mcp-server` |
-| `image.tag` | Image tag (defaults to chart `appVersion`) | `""` |
+| `image.tag` | Image tag (defaults to `v` + chart `appVersion`) | `""` |
 | `server.engineType` | `elasticsearch` or `opensearch` | `elasticsearch` |
 | `server.transport` | `streamable-http` or `sse` (`stdio` is not supported in Kubernetes) | `streamable-http` |
 | `server.port` | Port the MCP server listens on | `8000` |
