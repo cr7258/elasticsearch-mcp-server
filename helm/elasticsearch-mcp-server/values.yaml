@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   repository: ghcr.io/cr7258/elasticsearch-mcp-server
   pullPolicy: IfNotPresent
-  # Defaults to .Chart.AppVersion when empty
+  # Defaults to "v" + .Chart.AppVersion when empty
   tag: ""
 
 imagePullSecrets: []
