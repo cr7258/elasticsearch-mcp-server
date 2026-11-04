@@ -30,6 +30,7 @@ def clear_search_client_instances(monkeypatch):
     monkeypatch.delenv("DEFAULT_CLUSTER", raising=False)
     monkeypatch.delenv("VERIFY_CERTS", raising=False)
     monkeypatch.delenv("REQUEST_TIMEOUT", raising=False)
+    monkeypatch.delenv("ELASTICSEARCH_PROXY", raising=False)
 
 
 def test_creates_clients_from_multi_cluster_config_and_uses_default_cluster(
@@ -71,6 +72,7 @@ def test_creates_clients_from_multi_cluster_config_and_uses_default_cluster(
         "api_key": "prod-key",
         "verify_certs": True,
         "timeout": 5,
+        "proxy": None,
     }
 
 
@@ -165,6 +167,7 @@ def test_falls_back_to_single_cluster_environment_config(monkeypatch):
         "api_key": "one-key",
         "verify_certs": True,
         "timeout": 3.5,
+        "proxy": None,
     }
 
 

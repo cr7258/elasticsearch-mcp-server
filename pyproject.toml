@@ -15,6 +15,8 @@ dependencies = [
     "pydantic>=2.11.0,<2.12.0",
     "tomli==2.2.1",
     "tomli-w==1.2.0",
+    "httpx[socks]>=0.28.1",
+    "requests[socks]>=2.32.0",
 ]
 
 [project.license]

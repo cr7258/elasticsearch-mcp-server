@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 from src.clients.common.client import SearchClient
 from src.clients.exceptions import handle_search_exceptions
+from src.clients.proxy import normalize_proxy_url
 
 
 class SearchClientManager:
@@ -88,6 +89,9 @@ def _build_config(cluster_config: Dict, engine_type: str) -> Dict:
         "api_key": cluster_config.get("api_key") or os.environ.get(f"{prefix}_API_KEY"),
         "verify_certs": verify_certs,
         "timeout": timeout,
+        "proxy": normalize_proxy_url(
+            cluster_config.get("proxy") or os.environ.get(f"{prefix}_PROXY")
+        ),
     }
 
 def create_search_client(engine_type: str) -> SearchClient:
