@@ -7,6 +7,7 @@ from elasticsearch import Elasticsearch
 import httpx
 from opensearchpy import OpenSearch
 
+from src.log_redaction import host_for_log
 from src.clients.proxy import (
     elasticsearch_proxy_kwargs,
     normalize_proxy_url,
@@ -66,7 +67,7 @@ class SearchClientBase(ABC):
                 es_kwargs.update(elasticsearch_proxy_kwargs(proxy))
             self.client = Elasticsearch(**es_kwargs)
             self.logger.info(
-                f"Elasticsearch client initialized with hosts: {hosts}"
+                f"Elasticsearch client initialized with hosts: {host_for_log(hosts)}"
                 + (" (through a proxy)" if proxy else "")
             )
         elif engine_type == "opensearch":
@@ -81,7 +82,7 @@ class SearchClientBase(ABC):
                 os_kwargs.update(opensearch_proxy_kwargs(proxy))
             self.client = OpenSearch(**os_kwargs)
             self.logger.info(
-                f"OpenSearch client initialized with hosts: {hosts}"
+                f"OpenSearch client initialized with hosts: {host_for_log(hosts)}"
                 + (" (through a proxy)" if proxy else "")
             )
         else:
