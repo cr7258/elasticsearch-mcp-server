@@ -5,6 +5,7 @@ from typing import Dict, Optional
 from dotenv import load_dotenv
 
 from src.clients.common.client import SearchClient
+from src.clients.error_report import UnknownClusterError
 from src.clients.exceptions import handle_search_exceptions
 from src.clients.proxy import normalize_proxy_url
 
@@ -33,7 +34,7 @@ class SearchClientManager:
         try:
             return self._clients[cluster_name]
         except KeyError as exc:
-            raise ValueError(
+            raise UnknownClusterError(
                 f"Unknown cluster '{cluster_name}'. "
                 f"Available clusters: {', '.join(self._clients.keys())}"
             ) from exc
