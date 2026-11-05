@@ -54,7 +54,16 @@ def test_normalize_proxy_url_accepts_supported_schemes(value):
 
 
 @pytest.mark.parametrize(
-    "value", ["ftp://proxy:21", "socks4://proxy:1080", "127.0.0.1:1080", "socks5h://"]
+    "value",
+    [
+        "ftp://proxy:21",
+        "socks4://proxy:1080",
+        "127.0.0.1:1080",
+        "socks5h://",
+        "socks5h://127.0.0.1:invalid",
+        "socks5h://127.0.0.1:99999",
+        "http://proxy:0",
+    ],
 )
 def test_normalize_proxy_url_rejects_invalid_urls(value):
     with pytest.raises(ValueError, match="Invalid proxy URL"):
@@ -134,6 +143,49 @@ def test_opensearch_proxy_connection_sets_session_proxies():
     assert connection.session.proxies == {
         "http": "http://proxy:3128",
         "https": "http://proxy:3128",
+    }
+
+
+@pytest.fixture
+def system_proxy_env(monkeypatch):
+    """A system proxy that must never be used when a cluster proxy is configured."""
+    for name in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"):
+        monkeypatch.setenv(name, "http://127.0.0.1:9")
+    for name in ("NO_PROXY", "no_proxy"):
+        monkeypatch.delenv(name, raising=False)
+
+
+def test_configured_proxy_takes_precedence_over_system_proxy_for_elasticsearch(
+    system_proxy_env,
+):
+    from elastic_transport import NodeConfig
+
+    node_class = elasticsearch_proxy_kwargs("socks5h://127.0.0.1:1080")["node_class"]
+    session = node_class(NodeConfig("https", "es.internal", 9200)).session
+
+    settings = session.merge_environment_settings(
+        "https://es.internal:9200/", {}, None, None, None
+    )
+
+    assert settings["proxies"] == {
+        "http": "socks5h://127.0.0.1:1080",
+        "https": "socks5h://127.0.0.1:1080",
+    }
+
+
+def test_configured_proxy_takes_precedence_over_system_proxy_for_opensearch(
+    system_proxy_env,
+):
+    connection_class = opensearch_proxy_kwargs("socks5h://127.0.0.1:1080")["connection_class"]
+    session = connection_class(host="os.internal", port=9200).session
+
+    settings = session.merge_environment_settings(
+        "http://os.internal:9200/", {}, None, None, None
+    )
+
+    assert settings["proxies"] == {
+        "http": "socks5h://127.0.0.1:1080",
+        "https": "socks5h://127.0.0.1:1080",
     }
 
 
@@ -304,7 +356,7 @@ def socks_proxy():
     http_server.shutdown()
 
 
-def test_elasticsearch_requests_go_through_socks5h_proxy(socks_proxy):
+def test_elasticsearch_requests_go_through_socks5h_proxy(socks_proxy, system_proxy_env):
     proxy = f"socks5h://127.0.0.1:{socks_proxy.server_address[1]}"
     # The host name only exists "behind" the proxy: socks5h must not resolve it locally.
     client = SearchClient(
@@ -318,7 +370,7 @@ def test_elasticsearch_requests_go_through_socks5h_proxy(socks_proxy):
     assert socks_proxy.destinations == [("es.behind-proxy.invalid", 9200)]
 
 
-def test_general_rest_client_goes_through_socks5h_proxy(socks_proxy):
+def test_general_rest_client_goes_through_socks5h_proxy(socks_proxy, system_proxy_env):
     proxy = f"socks5h://127.0.0.1:{socks_proxy.server_address[1]}"
     client = GeneralRestClient(
         base_url="http://es.behind-proxy.invalid:9200/prefix",

@@ -26,12 +26,20 @@ def normalize_proxy_url(proxy: Optional[object]) -> Optional[str]:
     if not proxy_url:
         return None
 
+    error = (
+        f"Invalid proxy URL '{proxy_url}'. Expected <scheme>://<host>:<port> "
+        f"with scheme one of: {', '.join(SUPPORTED_PROXY_SCHEMES)}"
+    )
     parts = urlsplit(proxy_url)
     if parts.scheme.lower() not in SUPPORTED_PROXY_SCHEMES or not parts.hostname:
-        raise ValueError(
-            f"Invalid proxy URL '{proxy_url}'. Expected <scheme>://<host>:<port> "
-            f"with scheme one of: {', '.join(SUPPORTED_PROXY_SCHEMES)}"
-        )
+        raise ValueError(error)
+    try:
+        # Accessing .port raises ValueError for non-numeric or out-of-range ports.
+        port = parts.port
+    except ValueError as exc:
+        raise ValueError(f"{error} ({exc})") from None
+    if port == 0:
+        raise ValueError(f"{error} (port must be between 1 and 65535)")
     return proxy_url
 
 
@@ -40,11 +48,31 @@ def requests_proxies(proxy_url: str) -> Dict[str, str]:
     return {"http": proxy_url, "https": proxy_url}
 
 
+def pin_session_proxies(session, proxy_url: str) -> None:
+    """Route all requests of a ``requests.Session`` through ``proxy_url``.
+
+    Setting ``session.proxies`` alone is not enough: the transports call
+    ``session.merge_environment_settings()``, which gives ``HTTP_PROXY`` /
+    ``HTTPS_PROXY`` / ``NO_PROXY`` precedence over the session proxies. Override
+    the proxies in its result so the configured proxy always wins, the same as
+    ``httpx.Client(proxy=...)`` does for the general REST client. Other
+    environment settings such as ``REQUESTS_CA_BUNDLE`` keep working.
+    """
+    proxies = requests_proxies(proxy_url)
+    session.proxies = dict(proxies)
+    merge_environment_settings = session.merge_environment_settings
+
+    def merge_environment_settings_with_pinned_proxy(*args, **kwargs):
+        settings = merge_environment_settings(*args, **kwargs)
+        settings["proxies"] = dict(proxies)
+        return settings
+
+    session.merge_environment_settings = merge_environment_settings_with_pinned_proxy
+
+
 def elasticsearch_proxy_kwargs(proxy_url: str) -> Dict:
     """Return ``Elasticsearch()`` kwargs that send every request through ``proxy_url``."""
     from elasticsearch import __version__ as es_version
-
-    proxies = requests_proxies(proxy_url)
 
     if es_version[0] >= 8:
         # elasticsearch-py 8+/9+ selects the HTTP implementation via node_class.
@@ -53,7 +81,7 @@ def elasticsearch_proxy_kwargs(proxy_url: str) -> Dict:
         class ProxyRequestsHttpNode(RequestsHttpNode):
             def __init__(self, config):
                 super().__init__(config)
-                self.session.proxies = dict(proxies)
+                pin_session_proxies(self.session, proxy_url)
 
         return {"node_class": ProxyRequestsHttpNode}
 
@@ -63,22 +91,20 @@ def elasticsearch_proxy_kwargs(proxy_url: str) -> Dict:
     class ProxyRequestsHttpConnection(RequestsHttpConnection):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
-            self.session.proxies = dict(proxies)
+            pin_session_proxies(self.session, proxy_url)
 
     return {"connection_class": ProxyRequestsHttpConnection}
 
 
 def opensearch_proxy_kwargs(proxy_url: str) -> Dict:
     """Return ``OpenSearch()`` kwargs that send every request through ``proxy_url``."""
-    # Older opensearch-py releases have no ``proxies`` argument, so set it on
+    # Older opensearch-py releases have no ``proxies`` argument, so pin it on
     # the session directly, which works for all versions.
     from opensearchpy import RequestsHttpConnection
-
-    proxies = requests_proxies(proxy_url)
 
     class ProxyRequestsHttpConnection(RequestsHttpConnection):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
-            self.session.proxies = dict(proxies)
+            pin_session_proxies(self.session, proxy_url)
 
     return {"connection_class": ProxyRequestsHttpConnection}
