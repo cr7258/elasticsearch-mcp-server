@@ -7,6 +7,12 @@ from elasticsearch import Elasticsearch
 import httpx
 from opensearchpy import OpenSearch
 
+from src.clients.proxy import (
+    elasticsearch_proxy_kwargs,
+    normalize_proxy_url,
+    opensearch_proxy_kwargs,
+)
+
 
 class SearchClientBase(ABC):
     def __init__(self, config: Dict, engine_type: str):
@@ -28,6 +34,7 @@ class SearchClientBase(ABC):
         api_key = config.get("api_key")
         verify_certs = config.get("verify_certs", False)
         timeout = config.get("timeout")
+        proxy = normalize_proxy_url(config.get("proxy"))
 
         # Disable insecure request warnings if verify_certs is False
         if not verify_certs:
@@ -55,8 +62,13 @@ class SearchClientBase(ABC):
             es_kwargs = {"hosts": hosts, "verify_certs": verify_certs, **auth_params}
             if timeout is not None:
                 es_kwargs["request_timeout"] = timeout
+            if proxy:
+                es_kwargs.update(elasticsearch_proxy_kwargs(proxy))
             self.client = Elasticsearch(**es_kwargs)
-            self.logger.info(f"Elasticsearch client initialized with hosts: {hosts}")
+            self.logger.info(
+                f"Elasticsearch client initialized with hosts: {hosts}"
+                + (" (through a proxy)" if proxy else "")
+            )
         elif engine_type == "opensearch":
             os_kwargs = {
                 "hosts": hosts,
@@ -65,8 +77,13 @@ class SearchClientBase(ABC):
             }
             if timeout is not None:
                 os_kwargs["timeout"] = timeout
+            if proxy:
+                os_kwargs.update(opensearch_proxy_kwargs(proxy))
             self.client = OpenSearch(**os_kwargs)
-            self.logger.info(f"OpenSearch client initialized with hosts: {hosts}")
+            self.logger.info(
+                f"OpenSearch client initialized with hosts: {hosts}"
+                + (" (through a proxy)" if proxy else "")
+            )
         else:
             raise ValueError(f"Unsupported engine type: {engine_type}")
 
@@ -79,6 +96,7 @@ class SearchClientBase(ABC):
             api_key=api_key,
             verify_certs=verify_certs,
             timeout=timeout,
+            proxy=proxy,
         )
 
     def _get_elasticsearch_auth_params(
@@ -166,12 +184,14 @@ class GeneralRestClient:
         api_key: Optional[str],
         verify_certs: bool,
         timeout: Optional[float] = None,
+        proxy: Optional[str] = None,
     ):
         self.base_url = base_url.rstrip("/") if base_url else ""
         self.auth = (username, password) if username and password else None
         self.api_key = api_key
         self.verify_certs = verify_certs
         self.timeout = timeout
+        self.proxy = proxy
 
     def request(self, method, path, params=None, body=None):
         url = f"{self.base_url}/{path.lstrip('/')}"
@@ -184,6 +204,8 @@ class GeneralRestClient:
         client_kwargs = {"verify": self.verify_certs}
         if self.timeout is not None:
             client_kwargs["timeout"] = self.timeout
+        if self.proxy:
+            client_kwargs["proxy"] = self.proxy
         with httpx.Client(**client_kwargs) as client:
             resp = client.request(
                 method=method.upper(),

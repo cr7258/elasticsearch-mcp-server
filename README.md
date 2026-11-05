@@ -74,6 +74,7 @@ The MCP server supports the following environment variables:
 - `DEFAULT_CLUSTER`: Default cluster name to use when multi-cluster configuration is set and a tool call omits `cluster` (defaults to the first configured cluster).
 - `VERIFY_CERTS`: Whether to verify SSL certificates (default: `false`)
 - `REQUEST_TIMEOUT`: Request timeout in seconds (optional, uses client default if not set)
+- `ELASTICSEARCH_PROXY` / `OPENSEARCH_PROXY`: Route all requests through a proxy (optional). Supported schemes are `http://`, `https://`, `socks5://` and `socks5h://`, e.g. `socks5h://127.0.0.1:1080` for an SSH dynamic port forward (`ssh -D 1080 bastion`). Use `socks5h` when the cluster host name only resolves on the proxy side. In a multi-cluster configuration, set `proxy` per cluster; it overrides the environment variable.
 
 ### Multiple Cluster Configuration
 
@@ -127,10 +128,13 @@ For better readability, point `ELASTICSEARCH_CLUSTERS_FILE` (or `OPENSEARCH_CLUS
   "staging": {
     "hosts": ["https://staging-es:9200"],
     "username": "elastic",
-    "password": "<STAGING_PASSWORD>"
+    "password": "<STAGING_PASSWORD>",
+    "proxy": "socks5h://127.0.0.1:1080"
   }
 }
 ```
+
+Here only `staging` is reached through a SOCKS proxy, `prod` connects directly.
 
 Every tool accepts an optional `cluster` parameter. If omitted, the server uses `DEFAULT_CLUSTER`. When `DEFAULT_CLUSTER` is not set, the first cluster in the JSON object is used as the default. A tool call targeting a specific cluster looks like:
 
