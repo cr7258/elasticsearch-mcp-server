@@ -249,5 +249,7 @@ def test_unknown_cluster_raises_clear_error(monkeypatch):
 
     manager = create_search_client_manager("elasticsearch")
 
-    with pytest.raises(ValueError, match="Unknown cluster 'missing'"):
+    from src.clients.error_report import UnknownClusterError
+
+    with pytest.raises(UnknownClusterError, match="Unknown cluster 'missing'"):
         manager.get_client("missing")
