@@ -385,3 +385,19 @@ def test_general_rest_client_goes_through_socks5h_proxy(socks_proxy, system_prox
         "path": "/prefix/_cat/indices?format=json"
     }
     assert socks_proxy.destinations == [("es.behind-proxy.invalid", 9200)]
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "ftp://user:SECRETPW@proxy:21",
+        "socks5h://user:SECRETPW@127.0.0.1:invalid",
+        "http://user:SECRETPW@proxy:0",
+        "socks5h://user:SECRETPW@",
+    ],
+)
+def test_invalid_proxy_error_does_not_echo_the_url(value):
+    with pytest.raises(ValueError) as excinfo:
+        normalize_proxy_url(value)
+    assert "SECRETPW" not in str(excinfo.value)
+    assert "user" not in str(excinfo.value)

@@ -27,7 +27,7 @@ def normalize_proxy_url(proxy: Optional[object]) -> Optional[str]:
         return None
 
     error = (
-        f"Invalid proxy URL '{proxy_url}'. Expected <scheme>://<host>:<port> "
+        f"Invalid proxy URL. Expected <scheme>://<host>:<port> "
         f"with scheme one of: {', '.join(SUPPORTED_PROXY_SCHEMES)}"
     )
     parts = urlsplit(proxy_url)
@@ -36,8 +36,8 @@ def normalize_proxy_url(proxy: Optional[object]) -> Optional[str]:
     try:
         # Accessing .port raises ValueError for non-numeric or out-of-range ports.
         port = parts.port
-    except ValueError as exc:
-        raise ValueError(f"{error} ({exc})") from None
+    except ValueError:
+        raise ValueError(f"{error} (port must be a number between 1 and 65535)") from None
     if port == 0:
         raise ValueError(f"{error} (port must be between 1 and 65535)")
     return proxy_url

@@ -3,11 +3,13 @@ import logging
 from typing import TypeVar, Callable
 
 from fastmcp import FastMCP
-from mcp.types import TextContent
+from fastmcp.exceptions import ToolError
+
+from src.clients.error_report import build_report
 
 T = TypeVar('T')
 
-def handle_search_exceptions(func: Callable[..., T]) -> Callable[..., list[TextContent]]:
+def handle_search_exceptions(func: Callable[..., T]) -> Callable[..., T]:
     """
     Decorator to handle exceptions in search client operations.
     
@@ -15,16 +17,19 @@ def handle_search_exceptions(func: Callable[..., T]) -> Callable[..., list[TextC
         func: The function to decorate
         
     Returns:
-        Decorated function that handles exceptions
+        Decorated function that raises a ToolError carrying a caller-safe message
     """
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         logger = logging.getLogger()   
         try:
             return func(*args, **kwargs)
+        except ToolError:
+            raise
         except Exception as e:
-            logger.error(f"Unexpected error in {func.__name__}: {e}")
-            return [TextContent(type="text", text=f"Unexpected error in {func.__name__}: {str(e)}")]
+            report = build_report(func.__name__, e)
+            logger.error(report.log_line)
+            raise ToolError(report.caller_message) from None
     
     return wrapper
 

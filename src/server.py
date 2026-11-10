@@ -10,6 +10,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from src.clients import create_search_client_manager
+from src.log_redaction import install_url_redaction
 from src.response_format import GcfResponseMiddleware, gcf_encoding_enabled
 from src.tools.alias import AliasTools
 from src.tools.analyzer import AnalyzerTools
@@ -41,6 +42,7 @@ class SearchMCPServer:
             level=logging.INFO,
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         )
+        install_url_redaction()
         self.logger = logging.getLogger(__name__)
         self.logger.info(f"Initializing {self.name}, Version: {VERSION}")
 
@@ -117,7 +119,7 @@ class SearchMCPServer:
                     status_code=503,
                 )
             except Exception as exc:
-                self.logger.warning("Readiness check failed: %s", exc)
+                self.logger.warning("Readiness check failed: %s", type(exc).__name__)
                 return JSONResponse(
                     {"status": "error", "search_engine": self.engine_type},
                     status_code=503,
