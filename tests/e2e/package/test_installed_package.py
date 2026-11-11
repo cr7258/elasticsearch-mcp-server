@@ -61,7 +61,7 @@ def package_server(installed_package):
         )
         try:
             deadline = time.monotonic() + 30
-            with httpx.Client(trust_env=False, timeout=1) as client:
+            with httpx.Client(timeout=1) as client:
                 while time.monotonic() < deadline:
                     if process.poll() is not None:
                         pytest.fail(f"Installed server exited:\n{log_path.read_text()}")
@@ -86,10 +86,7 @@ def package_server(installed_package):
                 process.wait(timeout=5)
 
 
-def test_mcp_initialization_discovery_and_tool_error(package_server, monkeypatch):
-    monkeypatch.setenv("NO_PROXY", "127.0.0.1,localhost")
-    monkeypatch.setenv("no_proxy", "127.0.0.1,localhost")
-
+def test_mcp_initialization_discovery_and_tool_error(package_server):
     async def run():
         async with Client(f"{package_server}/mcp", timeout=10) as client:
             tools = await client.list_tools()
