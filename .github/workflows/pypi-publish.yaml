@@ -52,6 +52,9 @@ jobs:
     - name: Build ${{ matrix.variant.name }} package
       run: uv build
 
+    - name: Test installed wheel
+      run: bash scripts/test_package.sh dist/*.whl "${{ matrix.variant.name }}"
+
     - name: Publish ${{ matrix.variant.name }} package
       run: uv publish
 
