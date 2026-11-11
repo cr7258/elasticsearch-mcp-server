@@ -53,7 +53,10 @@ jobs:
       run: uv build
 
     - name: Test installed wheel
-      run: bash scripts/test_package.sh dist/*.whl "${{ matrix.variant.name }}"
+      run: >-
+        uv run --no-sync pytest tests/e2e/package -v
+        --package-wheel dist/*.whl
+        --package-entrypoint "${{ matrix.variant.name }}"
 
     - name: Publish ${{ matrix.variant.name }} package
       run: uv publish
