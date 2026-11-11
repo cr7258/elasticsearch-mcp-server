@@ -1,4 +1,3 @@
-import elastic_transport
 import elasticsearch
 import httpx
 import opensearchpy.exceptions as osx
@@ -161,6 +160,10 @@ def _httpx_error(status, body, method="POST", url="http://user:pw@host:9200/_que
 
 
 def _es_error(status, body):
+    if elasticsearch.__version__[0] < 8:
+        return elasticsearch.TransportError(status, "x", body)
+    import elastic_transport
+
     meta = elastic_transport.ApiResponseMeta(
         status=status, http_version="1.1", headers=elastic_transport.HttpHeaders(),
         duration=0.1, node=elastic_transport.NodeConfig("http", "host", 9200),
@@ -283,12 +286,18 @@ def test_log_line_ignores_reason_newlines():
     assert r.log_line == "t failed: 400 POST /_query t_e"
 
 
+def _es_connection_error(cls):
+    if elasticsearch.__version__[0] < 8:
+        return cls("N/A", "x http://host:9200", Exception("private cause"))
+    return cls("x http://host:9200")
+
+
 @pytest.mark.parametrize("exc,phrase,name", [
     (httpx.ReadTimeout("x http://host:9200"), "timed out", "ReadTimeout"),
     (httpx.ConnectError("x http://host:9200"), "connection failed", "ConnectError"),
     (httpx.ProxyError("x http://host:9200"), "connection failed", "ProxyError"),
-    (elastic_transport.ConnectionTimeout("x http://host:9200"), "timed out", "ConnectionTimeout"),
-    (elastic_transport.ConnectionError("x http://host:9200"), "connection failed", "ConnectionError"),
+    (_es_connection_error(elasticsearch.ConnectionTimeout), "timed out", "ConnectionTimeout"),
+    (_es_connection_error(elasticsearch.ConnectionError), "connection failed", "ConnectionError"),
     (osx.ConnectionTimeout("N/A", "x http://host:9200", Exception("h")), "timed out", "ConnectionTimeout"),
     (osx.ConnectionError("N/A", "x http://host:9200", Exception("h")), "connection failed", "ConnectionError"),
     (ValueError("MARKER_V"), "invalid argument", "ValueError"),
@@ -392,3 +401,11 @@ def test_es_api_error_with_string_body_gives_status_line_only():
     r = build_report("t", _es_error(500, "MARKER_RAW body text"))
     assert r.caller_message == "t failed: 500 Internal Server Error"
     assert r.log_line == "t failed: 500"
+
+
+@pytest.mark.parametrize("status", [401, 403])
+def test_es_authorization_error_withholds_identity(status):
+    body = {"error": {"type": "security_exception", "reason": "user svc role_x"}}
+    r = build_report("t", _es_error(status, body))
+    assert r.caller_message == f"t failed: {status} not authorized"
+    assert r.log_line == r.caller_message

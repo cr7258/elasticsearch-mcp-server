@@ -7,6 +7,47 @@ on:
       - main
 
 jobs:
+  package-tests:
+    name: Package Tests (${{ matrix.variant.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        variant:
+          - name: elasticsearch-mcp-server-es7
+            elasticsearch_version: "7.13.0"
+          - name: elasticsearch-mcp-server
+            elasticsearch_version: "8.17.2"
+          - name: elasticsearch-mcp-server-es9
+            elasticsearch_version: "9.0.0"
+          - name: opensearch-mcp-server
+            elasticsearch_version: "8.17.2"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install uv
+        run: python -m pip install uv
+      - name: Install test dependencies
+        run: uv sync --group dev
+      - name: Build package variant
+        run: |
+          sed -i 's/^name = .*$/name = "${{ matrix.variant.name }}"/' pyproject.toml
+          sed -i 's/elasticsearch==.*/elasticsearch==${{ matrix.variant.elasticsearch_version }}",/' pyproject.toml
+          if [[ "${{ matrix.variant.name }}" != "opensearch-mcp-server" ]]; then
+            sed -i 's/^elasticsearch-mcp-server = /"${{ matrix.variant.name }}" = /' pyproject.toml
+          fi
+          uv build
+      - name: Test installed wheel
+        run: >-
+          uv run --no-sync pytest tests/e2e/package -v
+          --package-wheel dist/*.whl
+          --package-entrypoint "${{ matrix.variant.name }}"
+
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
@@ -98,7 +139,7 @@ jobs:
       - name: Run e2e tests
         env:
           TESTCONTAINERS_RYUK_DISABLED: "true"
-        run: uv run pytest -m "e2e and not k8s" -vv
+        run: uv run pytest tests/e2e/containers -m e2e -vv
 
   kind-e2e-tests:
     name: Kubernetes E2E Tests

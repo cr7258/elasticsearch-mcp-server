@@ -6,10 +6,16 @@ import unicodedata
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
-import elastic_transport
 import elasticsearch
 import httpx
 import opensearchpy.exceptions as osx
+
+# The ES7 distribution is supported and does not install elastic-transport.
+# Select the HTTP exception type from the installed client's public API.
+if elasticsearch.__version__[0] >= 8:
+    from elasticsearch import ApiError as _ElasticsearchHttpError
+else:
+    from elasticsearch import TransportError as _ElasticsearchHttpError
 
 MAX_CALLER_CHARS = 2000
 MAX_LOG_CHARS = 300
@@ -188,14 +194,18 @@ def _http_parts(exc: BaseException):
             exc.request.url.path,
             body,
         )
-    if isinstance(exc, elasticsearch.ApiError):
-        return exc.meta.status, None, None, exc.body
-    if (
-        isinstance(exc, osx.TransportError)
-        and isinstance(exc.status_code, int)
-        and not isinstance(exc.status_code, bool)
-    ):
-        return exc.status_code, None, None, exc.info
+    if isinstance(exc, _ElasticsearchHttpError):
+        if elasticsearch.__version__[0] >= 8:
+            status, body = exc.meta.status, exc.body
+        else:
+            status, body = exc.status_code, exc.info
+    elif isinstance(exc, osx.TransportError):
+        status, body = exc.status_code, exc.info
+    else:
+        return None
+    # ES7/OpenSearch also use TransportError for non-HTTP failures.
+    if isinstance(status, int) and not isinstance(status, bool):
+        return status, None, None, body
     return None
 
 
@@ -204,12 +214,12 @@ def _non_http_phrase(exc: BaseException) -> str:
     # TransportError (their base) and before httpx.TransportError.
     if isinstance(
         exc,
-        (httpx.TimeoutException, elastic_transport.ConnectionTimeout, osx.ConnectionTimeout),
+        (httpx.TimeoutException, elasticsearch.ConnectionTimeout, osx.ConnectionTimeout),
     ):
         return "timed out"
     if isinstance(
         exc,
-        (httpx.TransportError, elastic_transport.ConnectionError, osx.ConnectionError),
+        (httpx.TransportError, elasticsearch.ConnectionError, osx.ConnectionError),
     ):
         return "connection failed"
     if isinstance(exc, (ValueError, TypeError)):

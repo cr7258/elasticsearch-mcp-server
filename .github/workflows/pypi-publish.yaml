@@ -52,6 +52,12 @@ jobs:
     - name: Build ${{ matrix.variant.name }} package
       run: uv build
 
+    - name: Test installed wheel
+      run: >-
+        uv run --no-sync pytest tests/e2e/package -v
+        --package-wheel dist/*.whl
+        --package-entrypoint "${{ matrix.variant.name }}"
+
     - name: Publish ${{ matrix.variant.name }} package
       run: uv publish
 
